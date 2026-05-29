@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PiP Counter (Fix +1 Mode)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-900 text-white flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden">
+
+    <div class="w-full max-w-sm bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700 z-10">
+        <h1 class="text-xl font-bold text-slate-400 mb-6 tracking-wide">PiP COUNTER</h1>
+
+        <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800">
+            <span id="counter-display" class="text-7xl font-mono font-bold select-none text-emerald-400">0</span>
+        </div>
+
+        <div class="mb-4 flex flex-col items-center justify-center">
+            <span class="text-xs text-slate-500 mb-1">Canvas映像プレビュー (PiPのソース)</span>
+            <canvas id="pip-canvas" class="border border-slate-700 rounded-lg bg-black"
+                style="width: 120px; height: 120px;"></canvas>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <button id="btn-minus"
+                class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-2xl font-bold py-4 rounded-xl transition-all">
+                -1
+            </button>
+            <button id="btn-plus"
+                class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-2xl font-bold py-4 rounded-xl transition-all">
+                +1
+            </button>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button id="btn-reset"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-400 font-medium py-2 rounded-xl border border-slate-700 transition-all">
+                リセット
+            </button>
+
+            <hr class="border-slate-700 my-2">
+
+            <button id="btn-pip"
+                class="bg-indigo-600 hover:bg-indigo-500 font-bold py-3 rounded-xl shadow-lg transition-all">
+                PiPモードを起動
+            </button>
+        </div>
+    </div>
+
+    <video id="pip-video" playsinline muted autoplay class="absolute pointer-events-none"
+        style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
+
+    <script>
+        let count = parseInt(localStorage.getItem('pip_counter_value')) || 0;
+
+        const display = document.getElementById('counter-display');
+        const btnPlus = document.getElementById('btn-plus');
+        const btnMinus = document.getElementById('btn-minus');
+        const btnReset = document.getElementById('btn-reset');
+        const btnPip = document.getElementById('btn-pip');
+
+        const canvas = document.getElementById('pip-canvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_SIZE = 300;
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
+
+        const video = document.getElementById('pip-video');
+
+        // ストリーム維持用無音オーディオトラック
+        function createSilentAudioStream() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const ctxAudio = new AudioContext();
+                const dst = ctxAudio.createMediaStreamDestination();
+                const gainNode = ctxAudio.createGain();
+                gainNode.gain.value = 0;
+                gainNode.connect(dst);
+                return dst.stream.getAudioTracks()[0];
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ストリームバインド
+        const videoStream = canvas.captureStream(15);
+        const combinedStream = new MediaStream();
+        videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
+        const silentAudioTrack = createSilentAudioStream();
+        if (silentAudioTrack) combinedStream.addTrack(silentAudioTrack);
+        video.srcObject = combinedStream;
+
+        let togglePixel = false;
+
+        function drawCanvas() {
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 90px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(count, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+
+            togglePixel = !togglePixel;
+            ctx.fillStyle = togglePixel ? '#020618' : '#020617';
+            ctx.fillRect(0, 0, 1, 1);
+        }
+
+        function updateDisplay() {
+            display.textContent = count;
+            localStorage.setItem('pip_counter_value', count);
+            drawCanvas();
+        }
+
+        setInterval(drawCanvas, 66);
+
+        function ensureVideoPlaying() {
+            if (video.paused) {
+                video.play().then(() => {
+                    setupMediaSession();
+                }).catch(() => { });
+            }
+        }
+        document.addEventListener('touchstart', ensureVideoPlaying, { passive: true });
+        document.addEventListener('click', ensureVideoPlaying, { passive: true });
+
+        // PiP起動
+        function startPiP() {
+            ensureVideoPlaying();
+            if (typeof video.webkitSetPresentationMode === 'function') {
+                video.webkitSetPresentationMode('picture-in-picture');
+            } else if (video.requestPictureInPicture) {
+                video.requestPictureInPicture().catch(err => console.log(err));
+            }
+        }
+
+        // --- ⚙️【バグ修正】トリガーを一本化 ＆ 高速連打ガードの設置 ---
+        let isClickGuarded = false;
+
+        video.addEventListener('pause', () => {
+            // 自動再生再開による2重発火、または超高速チャタリングを防ぐガード
+            if (isClickGuarded) return;
+
+            isClickGuarded = true;
+            console.log("リモコン入力検知: +1");
+            count++;
+            updateDisplay();
+
+            // 0.05秒後に自動再生。この瞬間はplayイベントによるカウントは回らないように排除済み
+            setTimeout(() => {
+                video.play().catch(() => { });
+            }, 50);
+
+            // 0.2秒経ったら次のユーザー入力を受け付ける（連打の安定化）
+            setTimeout(() => {
+                isClickGuarded = false;
+            }, 200);
+        });
+
+        // コントロールセンター用の表記設定
+        function setupMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'PiP Counter',
+                    artist: '⏸ ボタンタップで [+1]'
+                });
+                navigator.mediaSession.playbackState = 'playing';
+            }
+        }
+
+        // ライフサイクル管理
+        video.addEventListener('leavepictureinpicture', () => { updateDisplay(); });
+        if (typeof video.webkitSetPresentationMode === 'function') {
+            video.addEventListener('webkitpresentationmodechanged', () => {
+                if (video.webkitPresentationMode === 'inline') updateDisplay();
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                count = parseInt(localStorage.getItem('pip_counter_value')) || 0;
+                updateDisplay();
+                ensureVideoPlaying();
+            }
+        });
+
+        // イベントリスナー
+        btnPlus.addEventListener('click', () => { count++; updateDisplay(); });
+        btnMinus.addEventListener('click', () => { count--; if (count < 0) count = 0; updateDisplay(); });
+        btnReset.addEventListener('click', () => { count = 0; updateDisplay(); });
+        btnPip.addEventListener('click', startPiP);
+
+        // 初回起動
+        updateDisplay();
+    </script>
+</body>
+
+</html>
