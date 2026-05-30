@@ -4,70 +4,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PiP Counter (Play Trigger Mode)</title>
+    <title>Multi-Tab PiP Counter System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 
-<body
-    class="bg-slate-900 text-white flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden">
+<body class="text-white flex flex-col items-center justify-start min-h-screen p-4 overflow-y-auto pb-12">
 
-    <div class="w-full max-w-sm bg-slate-800 rounded-3xl p-6 shadow-2xl text-center border border-slate-700 z-10">
-        <h1 class="text-xl font-bold text-slate-400 mb-6 tracking-wide">PiP COUNTER</h1>
-
-        <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800">
-            <span id="counter-display" class="text-7xl font-mono font-bold select-none text-emerald-400">0</span>
-        </div>
-
-        <div class="mb-4 flex flex-col items-center justify-center">
-            <span class="text-xs text-slate-500 mb-1">Canvas映像プレビュー (PiPのソース)</span>
-            <canvas id="pip-canvas" class="border border-slate-700 rounded-lg bg-black"
-                style="width: 120px; height: 120px;"></canvas>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <button id="btn-minus"
-                class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-2xl font-bold py-4 rounded-xl transition-all">
-                -1
-            </button>
-            <button id="btn-plus"
-                class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-2xl font-bold py-4 rounded-xl transition-all">
-                +1
+    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl rounded-3xl p-5 shadow-2xl border border-slate-800 relative my-auto">
+        
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-xs font-black tracking-[0.2em] text-slate-400 uppercase">PiP MULTI-COUNTER</h1>
+            <button id="btn-add-tab" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-xl text-xs font-bold transition-all">
+                ＋ タブ追加
             </button>
         </div>
 
-        <div class="flex flex-col gap-3">
-            <button id="btn-reset"
-                class="bg-slate-800 hover:bg-slate-700 text-slate-400 font-medium py-2 rounded-xl border border-slate-700 transition-all">
-                リセット
-            </button>
+        <p class="text-[10px] text-slate-500 text-left mb-3">※タブをタップすると切り替え、既存のタブをもう一度タップすると名前を変更できます。</p>
 
-            <hr class="border-slate-700 my-2">
+        <div id="tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+            </div>
 
-            <button id="btn-pip"
-                class="bg-indigo-600 hover:bg-indigo-500 font-bold py-3 rounded-xl shadow-lg transition-all">
-                PiPモードを起動
-            </button>
+        <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
+                <p class="text-[10px] text-slate-500 font-bold">総周回数</p>
+                <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300">0</p>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
+                <p class="text-[10px] text-slate-500 font-bold">遭遇数 / 敗北数</p>
+                <p class="text-base font-mono font-bold text-amber-400"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
+                <p class="text-[10px] text-slate-500 font-bold">推定遭遇確率</p>
+                <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400">0.00%</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800 shadow-inner relative overflow-hidden text-center">
+            <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter">0</span>
+            <div class="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-widest">Current Run Count</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button id="btn-minus" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold py-4 rounded-xl border border-slate-700/60 transition-all flex items-center justify-center">－</button>
+            <button id="btn-plus" class="bg-gradient-to-b from-emerald-500 to-emerald-600 text-white active:scale-95 text-2xl font-bold py-4 rounded-xl shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center">＋</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <button id="btn-reset" class="bg-slate-950 text-slate-400 font-medium py-2.5 rounded-xl border border-slate-800 text-xs transition-all">リセット</button>
+            <button id="btn-encounter" class="bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-950/20">💥 遭遇記録</button>
+            <button id="btn-delete-tab" class="bg-rose-950/40 text-rose-400 font-medium py-2.5 rounded-xl border border-rose-900/30 text-xs transition-all">タブ削除</button>
+        </div>
+
+        <button id="btn-pip" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 font-bold py-3.5 rounded-xl shadow-xl transition-all text-sm tracking-wider">
+            浮遊（PiP）モードを起動
+        </button>
+
+        <canvas id="pip-canvas" class="absolute opacity-0 pointer-events-none" style="width: 1px; height: 1px; top: -10px;"></canvas>
+
+        <div class="mt-5 border-t border-slate-800/80 pt-4">
+            <h3 class="text-xs font-bold text-slate-500 tracking-wider mb-2 text-left uppercase">Encounter Logs (履歴)</h3>
+            <div id="logs-container" class="max-h-40 overflow-y-auto space-y-1.5 pr-1 text-xs text-left no-scrollbar">
+                </div>
         </div>
     </div>
 
-    <video id="pip-video" playsinline muted class="absolute pointer-events-none"
-        style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
+    <video id="pip-video" playsinline muted class="absolute pointer-events-none" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
 
     <script>
-        let count = parseInt(localStorage.getItem('pip_counter_value')) || 0;
+        let appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || {
+            activeTabId: "tab_1",
+            tabs: {
+                "tab_1": { id: "tab_1", name: "カウンター 1", count: 0, totalRuns: 0, defeatCount: 0, logs: [] }
+            }
+        };
 
         const display = document.getElementById('counter-display');
         const btnPlus = document.getElementById('btn-plus');
         const btnMinus = document.getElementById('btn-minus');
         const btnReset = document.getElementById('btn-reset');
+        const btnEncounter = document.getElementById('btn-encounter');
         const btnPip = document.getElementById('btn-pip');
+        const btnAddTab = document.getElementById('btn-add-tab');
+        const btnDeleteTab = document.getElementById('btn-delete-tab');
+        const tabsContainer = document.getElementById('tabs-container');
+        const logsContainer = document.getElementById('logs-container');
+
+        const statTotalRuns = document.getElementById('stat-total-runs');
+        const statEncounters = document.getElementById('stat-encounters');
+        const statDefeats = document.getElementById('stat-defeats');
+        const statProbability = document.getElementById('stat-probability');
 
         const canvas = document.getElementById('pip-canvas');
         const ctx = canvas.getContext('2d');
@@ -103,7 +138,6 @@
             return true;
         }
 
-        // ストリームバインド
         const videoStream = canvas.captureStream(15);
         const canvasVideoTrack = videoStream.getVideoTracks()[0] || null;
         const combinedStream = new MediaStream();
@@ -119,14 +153,15 @@
         }
 
         function drawCanvas() {
+            const currentTab = appState.tabs[appState.activeTabId] || { count: 0 };
             ctx.fillStyle = '#020617';
             ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
             ctx.fillStyle = '#34d399';
-            ctx.font = 'bold 90px sans-serif';
+            ctx.font = 'bold 95px font-mono, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(count, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+            ctx.fillText(currentTab.count, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
 
             togglePixel = !togglePixel;
             ctx.fillStyle = togglePixel ? '#020618' : '#020617';
@@ -135,117 +170,235 @@
             flushCanvasFrame();
         }
 
+        function saveState() {
+            localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
+        }
+
+        // 💡【アップデート】タブ描画と名前変更ロジック
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            Object.values(appState.tabs).forEach(tab => {
+                const isActive = tab.id === appState.activeTabId;
+                const button = document.createElement('button');
+                button.className = `flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 border ${
+                    isActive 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-md' 
+                    : 'bg-slate-800 text-slate-400 border-slate-700/50 hover:bg-slate-750'
+                }`;
+                // 編集可能であることを示すうっすらとした鉛筆マークを追加（任意）
+                button.textContent = `${tab.name} (${tab.count})`;
+                
+                button.addEventListener('click', () => {
+                    if (isActive) {
+                        // 既に選択されているタブをもう一度押したら名前変更プロンプトを出す
+                        renameTab(tab.id);
+                    } else {
+                        // 違うタブなら切り替え
+                        switchTab(tab.id);
+                    }
+                });
+                tabsContainer.appendChild(button);
+            });
+        }
+
+        // 💡【新機能】名前変更プロンプト
+        function renameTab(id) {
+            const tab = appState.tabs[id];
+            if (!tab) return;
+            
+            const newName = prompt(`「${tab.name}」の新しい名前を入力してください:`, tab.name);
+            if (newName === null) return; // キャンセル時
+            
+            const trimmedName = newName.trim();
+            if (trimmedName === "") {
+                alert("名前を空にすることはできません。");
+                return;
+            }
+            
+            tab.name = trimmedName;
+            updateDisplay();
+        }
+
+        function renderStatsAndLogs() {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const totalRuns = currentTab.totalRuns + currentTab.count; 
+            const encounterCount = currentTab.logs.length;
+            const defeatCount = currentTab.defeatCount || 0;
+            const probability = totalRuns > 0 ? ((encounterCount / totalRuns) * 100).toFixed(2) : '0.00';
+
+            statTotalRuns.textContent = totalRuns;
+            statEncounters.textContent = encounterCount;
+            statDefeats.textContent = defeatCount;
+            statProbability.textContent = `${probability}%`;
+
+            logsContainer.innerHTML = '';
+            if (currentTab.logs.length === 0) {
+                logsContainer.innerHTML = `<div class="text-slate-600 italic text-center pt-2">履歴がありません</div>`;
+            } else {
+                [...currentTab.logs].reverse().forEach((log, index) => {
+                    const realIndex = currentTab.logs.length - index;
+                    const isDefeat = log.drops === 0;
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border ${isDefeat ? 'border-rose-950/30 bg-rose-950/5 text-rose-300' : 'border-slate-800/80 text-slate-300'}`;
+                    div.innerHTML = `
+                        <span><strong>#${realIndex}</strong> 遭遇まで: <strong>${log.runAt}</strong> 回</span>
+                        <span class="font-mono ${isDefeat ? 'text-rose-400 font-bold' : 'text-amber-400'}">${isDefeat ? '❌ 敗北' : '💎 ドロップ: ' + log.drops}</span>
+                    `;
+                    logsContainer.appendChild(div);
+                });
+            }
+        }
+
         function updateDisplay() {
-            display.textContent = count;
-            localStorage.setItem('pip_counter_value', count);
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) {
+                display.textContent = currentTab.count;
+            }
+            renderTabs();
+            renderStatsAndLogs();
+            saveState();
             drawCanvas();
         }
 
-        // Canvasの定期描画（ビデオが停止していてもCanvas自体は最新の数値を描画し続ける）
+        function switchTab(id) {
+            if (!appState.tabs[id]) return;
+            appState.activeTabId = id;
+            updateDisplay();
+        }
+
+        btnAddTab.addEventListener('click', () => {
+            const newId = `tab_${Date.now()}`;
+            const tabCount = Object.keys(appState.tabs).length + 1;
+            appState.tabs[newId] = {
+                id: newId,
+                name: `カウンター ${tabCount}`,
+                count: 0,
+                totalRuns: 0,
+                defeatCount: 0,
+                logs: []
+            };
+            appState.activeTabId = newId;
+            updateDisplay();
+        });
+
+        btnDeleteTab.addEventListener('click', () => {
+            const tabKeys = Object.keys(appState.tabs);
+            if (tabKeys.length <= 1) {
+                alert("これ以上タブを削除することはできません。");
+                return;
+            }
+            if (confirm("このカウンターの全データが削除されます。本当によろしいですか？")) {
+                delete appState.tabs[appState.activeTabId];
+                appState.activeTabId = Object.keys(appState.tabs)[0];
+                updateDisplay();
+            }
+        });
+
+        btnEncounter.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt(`遭遇記録を行います。\nドロップ数を入力してください（0を入力すると敗北数に加算されます）:`, "1");
+            if (input === null) return;
+
+            const drops = parseInt(input);
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.totalRuns += currentTab.count;
+
+            if (drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            currentTab.logs.push({
+                runAt: currentTab.count, 
+                drops: drops
+            });
+
+            currentTab.count = 0;
+            updateDisplay();
+        });
+
         setInterval(drawCanvas, 66);
         (function drawLoop() {
             requestAnimationFrame(() => {
-                if (isInPipMode()) {
-                    drawCanvas();
-                }
+                if (isInPipMode()) drawCanvas();
                 drawLoop();
             });
         })();
 
-        // Initialize MediaSession without forcing playback.
         function prepareMediaSession() {
             if (!('mediaSession' in navigator)) return;
-
             if (!mediaSessionReady) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: 'PiP Counter',
+                    title: 'PiP Counter System',
                     artist: '▶︎ ボタンタップで [+1]'
                 });
-
                 if (typeof navigator.mediaSession.setActionHandler === 'function') {
                     try {
-                        navigator.mediaSession.setActionHandler('play', () => {
-                            handlePlayTrigger('media');
-                        });
+                        navigator.mediaSession.setActionHandler('play', () => { handlePlayTrigger(); });
                         navigator.mediaSession.setActionHandler('pause', () => {
                             if (!video.paused) video.pause();
                             navigator.mediaSession.playbackState = 'paused';
                         });
-                    } catch (e) {
-                    }
+                    } catch (e) {}
                 }
-
                 mediaSessionReady = true;
             }
-
             navigator.mediaSession.playbackState = 'paused';
         }
         document.addEventListener('touchstart', prepareMediaSession, { passive: true });
         document.addEventListener('click', prepareMediaSession, { passive: true });
 
-        // PiP起動
         function startPiP() {
-            // iOS仕様：一度playを呼び出さないとPiP化できないため、一瞬だけ再生して即座に一時停止する
             suppressPlay();
             video.play().then(() => {
-                video.pause(); // デフォルトを停止状態に
+                video.pause();
                 prepareMediaSession();
-
                 if (typeof video.webkitSetPresentationMode === 'function') {
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
                 } else if (video.requestPictureInPicture) {
-                    video.requestPictureInPicture()
-                        .then(() => { pipAssumedActive = true; })
-                        .catch(err => console.log(err));
+                    video.requestPictureInPicture().then(() => { pipAssumedActive = true; }).catch(err => console.log(err));
                 }
             }).catch(err => console.log(err));
         }
 
-        function handlePlayTrigger(source) {
+        function handlePlayTrigger() {
             const now = Date.now();
             if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
                 if (!video.paused) video.pause();
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'paused';
-                }
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
                 return;
             }
             lastPlayHandledAt = now;
 
             if (!shouldCountPlay()) {
                 if (!video.paused) video.pause();
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'paused';
-                }
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
                 return;
             }
 
-            console.log("リモコン再生(▶︎)入力検知: +1");
-            count++;
-            updateDisplay();
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) {
+                currentTab.count++;
+                updateDisplay();
+            }
 
             suppressPlay(200);
-
-            // Return to paused state quickly to keep PiP controls on ▶︎.
             setTimeout(() => {
                 video.pause();
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = 'paused';
-                }
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
             }, 50);
         }
 
-        video.addEventListener('play', () => {
-            handlePlayTrigger();
-        });
+        video.addEventListener('play', () => { handlePlayTrigger(); });
 
-        // 停止イベント時は何もせずスルー
-        video.addEventListener('pause', () => {
-            // ここではカウントを増やさない
-        });
-
-        // ライフサイクル管理
         video.addEventListener('leavepictureinpicture', () => {
             pipAssumedActive = false;
             updateDisplay();
@@ -264,18 +417,28 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 suppressPlay();
-                count = parseInt(localStorage.getItem('pip_counter_value')) || 0;
+                appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || appState;
                 updateDisplay();
             }
         });
 
-        // イベントリスナー
-        btnPlus.addEventListener('click', () => { count++; updateDisplay(); });
-        btnMinus.addEventListener('click', () => { count--; if (count < 0) count = 0; updateDisplay(); });
-        btnReset.addEventListener('click', () => { count = 0; updateDisplay(); });
+        btnPlus.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) { currentTab.count++; updateDisplay(); }
+        });
+        btnMinus.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab && currentTab.count > 0) { currentTab.count--; updateDisplay(); }
+        });
+        btnReset.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab && confirm("現在のカウントを0にリセットしますか？（周回数や履歴は残ります）")) {
+                currentTab.count = 0;
+                updateDisplay();
+            }
+        });
         btnPip.addEventListener('click', startPiP);
 
-        // 初回起動
         updateDisplay();
     </script>
 </body>
