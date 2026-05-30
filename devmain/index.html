@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PiP Counter (Fix +1 Mode)</title>
+    <title>PiP Counter (Play Trigger Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -57,7 +57,7 @@
         </div>
     </div>
 
-    <video id="pip-video" playsinline muted autoplay class="absolute pointer-events-none"
+    <video id="pip-video" playsinline muted class="absolute pointer-events-none"
         style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
 
     <script>
@@ -77,30 +77,46 @@
 
         const video = document.getElementById('pip-video');
 
-        // ストリーム維持用無音オーディオトラック
-        function createSilentAudioStream() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const ctxAudio = new AudioContext();
-                const dst = ctxAudio.createMediaStreamDestination();
-                const gainNode = ctxAudio.createGain();
-                gainNode.gain.value = 0;
-                gainNode.connect(dst);
-                return dst.stream.getAudioTracks()[0];
-            } catch (e) {
-                return null;
+        const PLAY_GUARD_MS = 800;
+        const PLAY_DEDUP_MS = 250;
+        let ignorePlayUntil = 0;
+        let lastPlayHandledAt = 0;
+        let mediaSessionReady = false;
+        let pipAssumedActive = false;
+
+        function suppressPlay(ms = PLAY_GUARD_MS) {
+            const until = Date.now() + ms;
+            if (until > ignorePlayUntil) ignorePlayUntil = until;
+        }
+
+        function isInPipMode() {
+            if (document.pictureInPictureElement === video) return true;
+            if (typeof video.webkitPresentationMode === 'string') {
+                return video.webkitPresentationMode === 'picture-in-picture';
             }
+            return pipAssumedActive;
+        }
+
+        function shouldCountPlay() {
+            if (!isInPipMode()) return false;
+            if (Date.now() < ignorePlayUntil) return false;
+            return true;
         }
 
         // ストリームバインド
         const videoStream = canvas.captureStream(15);
+        const canvasVideoTrack = videoStream.getVideoTracks()[0] || null;
         const combinedStream = new MediaStream();
         videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
-        const silentAudioTrack = createSilentAudioStream();
-        if (silentAudioTrack) combinedStream.addTrack(silentAudioTrack);
         video.srcObject = combinedStream;
 
         let togglePixel = false;
+
+        function flushCanvasFrame() {
+            if (canvasVideoTrack && typeof canvasVideoTrack.requestFrame === 'function') {
+                canvasVideoTrack.requestFrame();
+            }
+        }
 
         function drawCanvas() {
             ctx.fillStyle = '#020617';
@@ -115,6 +131,8 @@
             togglePixel = !togglePixel;
             ctx.fillStyle = togglePixel ? '#020618' : '#020617';
             ctx.fillRect(0, 0, 1, 1);
+
+            flushCanvasFrame();
         }
 
         function updateDisplay() {
@@ -123,75 +141,131 @@
             drawCanvas();
         }
 
+        // Canvasの定期描画（ビデオが停止していてもCanvas自体は最新の数値を描画し続ける）
         setInterval(drawCanvas, 66);
+        (function drawLoop() {
+            requestAnimationFrame(() => {
+                if (isInPipMode()) {
+                    drawCanvas();
+                }
+                drawLoop();
+            });
+        })();
 
-        function ensureVideoPlaying() {
-            if (video.paused) {
-                video.play().then(() => {
-                    setupMediaSession();
-                }).catch(() => { });
+        // Initialize MediaSession without forcing playback.
+        function prepareMediaSession() {
+            if (!('mediaSession' in navigator)) return;
+
+            if (!mediaSessionReady) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'PiP Counter',
+                    artist: '▶︎ ボタンタップで [+1]'
+                });
+
+                if (typeof navigator.mediaSession.setActionHandler === 'function') {
+                    try {
+                        navigator.mediaSession.setActionHandler('play', () => {
+                            handlePlayTrigger('media');
+                        });
+                        navigator.mediaSession.setActionHandler('pause', () => {
+                            if (!video.paused) video.pause();
+                            navigator.mediaSession.playbackState = 'paused';
+                        });
+                    } catch (e) {
+                    }
+                }
+
+                mediaSessionReady = true;
             }
+
+            navigator.mediaSession.playbackState = 'paused';
         }
-        document.addEventListener('touchstart', ensureVideoPlaying, { passive: true });
-        document.addEventListener('click', ensureVideoPlaying, { passive: true });
+        document.addEventListener('touchstart', prepareMediaSession, { passive: true });
+        document.addEventListener('click', prepareMediaSession, { passive: true });
 
         // PiP起動
         function startPiP() {
-            ensureVideoPlaying();
-            if (typeof video.webkitSetPresentationMode === 'function') {
-                video.webkitSetPresentationMode('picture-in-picture');
-            } else if (video.requestPictureInPicture) {
-                video.requestPictureInPicture().catch(err => console.log(err));
-            }
+            // iOS仕様：一度playを呼び出さないとPiP化できないため、一瞬だけ再生して即座に一時停止する
+            suppressPlay();
+            video.play().then(() => {
+                video.pause(); // デフォルトを停止状態に
+                prepareMediaSession();
+
+                if (typeof video.webkitSetPresentationMode === 'function') {
+                    video.webkitSetPresentationMode('picture-in-picture');
+                    pipAssumedActive = true;
+                } else if (video.requestPictureInPicture) {
+                    video.requestPictureInPicture()
+                        .then(() => { pipAssumedActive = true; })
+                        .catch(err => console.log(err));
+                }
+            }).catch(err => console.log(err));
         }
 
-        // --- ⚙️【バグ修正】トリガーを一本化 ＆ 高速連打ガードの設置 ---
-        let isClickGuarded = false;
+        function handlePlayTrigger(source) {
+            const now = Date.now();
+            if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
+                if (!video.paused) video.pause();
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
+                return;
+            }
+            lastPlayHandledAt = now;
 
-        video.addEventListener('pause', () => {
-            // 自動再生再開による2重発火、または超高速チャタリングを防ぐガード
-            if (isClickGuarded) return;
+            if (!shouldCountPlay()) {
+                if (!video.paused) video.pause();
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
+                return;
+            }
 
-            isClickGuarded = true;
-            console.log("リモコン入力検知: +1");
+            console.log("リモコン再生(▶︎)入力検知: +1");
             count++;
             updateDisplay();
 
-            // 0.05秒後に自動再生。この瞬間はplayイベントによるカウントは回らないように排除済み
+            suppressPlay(200);
+
+            // Return to paused state quickly to keep PiP controls on ▶︎.
             setTimeout(() => {
-                video.play().catch(() => { });
+                video.pause();
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
             }, 50);
-
-            // 0.2秒経ったら次のユーザー入力を受け付ける（連打の安定化）
-            setTimeout(() => {
-                isClickGuarded = false;
-            }, 200);
-        });
-
-        // コントロールセンター用の表記設定
-        function setupMediaSession() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: 'PiP Counter',
-                    artist: '⏸ ボタンタップで [+1]'
-                });
-                navigator.mediaSession.playbackState = 'playing';
-            }
         }
 
+        video.addEventListener('play', () => {
+            handlePlayTrigger();
+        });
+
+        // 停止イベント時は何もせずスルー
+        video.addEventListener('pause', () => {
+            // ここではカウントを増やさない
+        });
+
         // ライフサイクル管理
-        video.addEventListener('leavepictureinpicture', () => { updateDisplay(); });
+        video.addEventListener('leavepictureinpicture', () => {
+            pipAssumedActive = false;
+            updateDisplay();
+        });
         if (typeof video.webkitSetPresentationMode === 'function') {
             video.addEventListener('webkitpresentationmodechanged', () => {
-                if (video.webkitPresentationMode === 'inline') updateDisplay();
+                if (video.webkitPresentationMode === 'inline') {
+                    pipAssumedActive = false;
+                    updateDisplay();
+                } else if (video.webkitPresentationMode === 'picture-in-picture') {
+                    pipAssumedActive = true;
+                }
             });
         }
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
+                suppressPlay();
                 count = parseInt(localStorage.getItem('pip_counter_value')) || 0;
                 updateDisplay();
-                ensureVideoPlaying();
             }
         });
 
