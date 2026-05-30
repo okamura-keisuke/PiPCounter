@@ -358,19 +358,27 @@
         function startPiP() {
             suppressPlay();
             video.play().then(() => {
-                video.pause();
                 prepareMediaSession();
                 if (typeof video.webkitSetPresentationMode === 'function') {
+                    video.pause();
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
                 } else if (video.requestPictureInPicture) {
-                    video.requestPictureInPicture().then(() => { pipAssumedActive = true; }).catch(err => console.log(err));
+                    video.requestPictureInPicture().then(() => {
+                        pipAssumedActive = true;
+                        setTimeout(() => {
+                            if (!video.paused) video.pause();
+                        }, 50);
+                    }).catch(err => console.log(err));
+                } else {
+                    video.pause();
                 }
             }).catch(err => console.log(err));
         }
 
         function handlePlayTrigger() {
             const now = Date.now();
+            if (now < ignorePlayUntil) return;
             if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
                 if (!video.paused) video.pause();
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
