@@ -31,27 +31,43 @@
 
         <p class="text-[10px] text-slate-500 text-left mb-3">※タブをタップすると切り替え、既存のタブをもう一度タップすると名前を変更できます。</p>
 
-        <div id="tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
-            </div>
+        <div id="tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1"></div>
 
         <div class="grid grid-cols-3 gap-2 mb-4 text-center">
-            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
-                <p class="text-[10px] text-slate-500 font-bold">総周回数</p>
-                <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300">0</p>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-slate-500 font-bold">総周回数</p>
+                    <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300">0</p>
+                </div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-total" class="text-[9px] bg-slate-800 hover:bg-slate-700 px-1 py-0.5 rounded text-slate-400 font-bold transition-all">変更</button>
+                    <button id="btn-add-total" class="text-[9px] bg-slate-800 hover:bg-slate-700 px-1 py-0.5 rounded text-slate-400 font-bold transition-all">＋加算</button>
+                </div>
             </div>
-            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
-                <p class="text-[10px] text-slate-500 font-bold">遭遇数 / 敗北数</p>
-                <p class="text-base font-mono font-bold text-amber-400"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-slate-500 font-bold">遭遇数 / 敗北数</p>
+                    <p class="text-base font-mono font-bold text-amber-400"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
+                </div>
+                <div></div>
             </div>
-            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60">
-                <p class="text-[10px] text-slate-500 font-bold">推定遭遇確率</p>
-                <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400">0.00%</p>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-slate-500 font-bold">推定遭遇確率</p>
+                    <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400">0.00%</p>
+                </div>
+                <div></div>
             </div>
         </div>
 
         <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800 shadow-inner relative overflow-hidden text-center">
             <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter">0</span>
             <div class="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-widest">Current Run Count</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+            <button id="btn-edit-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-1.5 rounded-xl border border-slate-800 text-[10px] font-bold transition-all">⏱ 現在値の数値を変更</button>
+            <button id="btn-add-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-1.5 rounded-xl border border-slate-800 text-[10px] font-bold transition-all">⏱ 現在値に指定加算</button>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-4">
@@ -72,9 +88,11 @@
         <canvas id="pip-canvas" class="absolute opacity-0 pointer-events-none" style="width: 1px; height: 1px; top: -10px;"></canvas>
 
         <div class="mt-5 border-t border-slate-800/80 pt-4">
-            <h3 class="text-xs font-bold text-slate-500 tracking-wider mb-2 text-left uppercase">Encounter Logs (履歴)</h3>
-            <div id="logs-container" class="max-h-40 overflow-y-auto space-y-1.5 pr-1 text-xs text-left no-scrollbar">
-                </div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-500 tracking-wider uppercase">Encounter Logs (履歴)</h3>
+                <button id="btn-manual-log" class="bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all">＋ 履歴手動追加</button>
+            </div>
+            <div id="logs-container" class="max-h-45 overflow-y-auto space-y-1.5 pr-1 text-xs text-left no-scrollbar"></div>
         </div>
     </div>
 
@@ -103,6 +121,13 @@
         const statEncounters = document.getElementById('stat-encounters');
         const statDefeats = document.getElementById('stat-defeats');
         const statProbability = document.getElementById('stat-probability');
+
+        // 新設ボタンの参照
+        const btnEditTotal = document.getElementById('btn-edit-total');
+        const btnAddTotal = document.getElementById('btn-add-total');
+        const btnEditCurrent = document.getElementById('btn-edit-current');
+        const btnAddCurrent = document.getElementById('btn-add-current');
+        const btnManualLog = document.getElementById('btn-manual-log');
 
         const canvas = document.getElementById('pip-canvas');
         const ctx = canvas.getContext('2d');
@@ -174,7 +199,6 @@
             localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
         }
 
-        // 💡【アップデート】タブ描画と名前変更ロジック
         function renderTabs() {
             tabsContainer.innerHTML = '';
             Object.values(appState.tabs).forEach(tab => {
@@ -185,15 +209,12 @@
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-md' 
                     : 'bg-slate-800 text-slate-400 border-slate-700/50 hover:bg-slate-750'
                 }`;
-                // 編集可能であることを示すうっすらとした鉛筆マークを追加（任意）
                 button.textContent = `${tab.name} (${tab.count})`;
                 
                 button.addEventListener('click', () => {
                     if (isActive) {
-                        // 既に選択されているタブをもう一度押したら名前変更プロンプトを出す
                         renameTab(tab.id);
                     } else {
-                        // 違うタブなら切り替え
                         switchTab(tab.id);
                     }
                 });
@@ -201,13 +222,12 @@
             });
         }
 
-        // 💡【新機能】名前変更プロンプト
         function renameTab(id) {
             const tab = appState.tabs[id];
             if (!tab) return;
             
             const newName = prompt(`「${tab.name}」の新しい名前を入力してください:`, tab.name);
-            if (newName === null) return; // キャンセル時
+            if (newName === null) return;
             
             const trimmedName = newName.trim();
             if (trimmedName === "") {
@@ -239,12 +259,21 @@
             } else {
                 [...currentTab.logs].reverse().forEach((log, index) => {
                     const realIndex = currentTab.logs.length - index;
+                    const logIndex = currentTab.logs.length - 1 - index; // 実際のデータ内インデックス
                     const isDefeat = log.drops === 0;
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border ${isDefeat ? 'border-rose-950/30 bg-rose-950/5 text-rose-300' : 'border-slate-800/80 text-slate-300'}`;
+                    
+                    // 【機能2】履歴アイテムの右側に「編集」「削除」の操作UIを密かに実装
                     div.innerHTML = `
-                        <span><strong>#${realIndex}</strong> 遭遇まで: <strong>${log.runAt}</strong> 回</span>
-                        <span class="font-mono ${isDefeat ? 'text-rose-400 font-bold' : 'text-amber-400'}">${isDefeat ? '❌ 敗北' : '💎 ドロップ: ' + log.drops}</span>
+                        <div class="flex flex-col flex-grow text-left">
+                            <span><strong>#${realIndex}</strong> 遭遇まで: <strong>${log.runAt}</strong> 回</span>
+                            <span class="font-mono text-[11px] ${isDefeat ? 'text-rose-400 font-bold' : 'text-amber-400'}">${isDefeat ? '❌ 敗北' : '💎 ドロップ: ' + log.drops}</span>
+                        </div>
+                        <div class="flex gap-1 flex-shrink-0 ml-2">
+                            <button onclick="editLog(${logIndex})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition-all">編集</button>
+                            <button onclick="deleteLog(${logIndex})" class="bg-rose-950/60 hover:bg-rose-900/60 text-rose-400 px-2 py-1 rounded text-[10px] font-bold transition-all">削除</button>
+                        </div>
                     `;
                     logsContainer.appendChild(div);
                 });
@@ -323,6 +352,172 @@
             currentTab.count = 0;
             updateDisplay();
         });
+
+        // ─── 🌟【新設機能のJavaScript実装セクション】 ───
+
+        // 【機能1】履歴の手動追加処理
+        btnManualLog.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const runInput = prompt("過去の遭遇履歴を手動追加します。\nこの遭遇までに『かかった周回回数』を入力してください:", "1");
+            if (runInput === null) return;
+            const runAt = parseInt(runInput);
+            if (isNaN(runAt) || runAt < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            const dropInput = prompt("ドロップ数を入力してください（0を入力すると敗北扱いになります）:", "1");
+            if (dropInput === null) return;
+            const drops = parseInt(dropInput);
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            // 整合性を保つため総周回ベースに加算
+            currentTab.totalRuns += runAt;
+            if (drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            currentTab.logs.push({ runAt: runAt, drops: drops });
+            updateDisplay();
+        });
+
+        // 【機能2】履歴の編集処理（グローバル露出）
+        window.editLog = function(index) {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab || !currentTab.logs[index]) return;
+
+            const log = currentTab.logs[index];
+
+            const runInput = prompt("この回の『かかった周回回数』を変更します:", log.runAt);
+            if (runInput === null) return;
+            const runAt = parseInt(runInput);
+            if (isNaN(runAt) || runAt < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            const dropInput = prompt("この回の『ドロップ数』を変更します（0で敗北扱い）:", log.drops);
+            if (dropInput === null) return;
+            const drops = parseInt(dropInput);
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            // 総周回数の差分を安全に調整
+            currentTab.totalRuns = currentTab.totalRuns - log.runAt + runAt;
+
+            // 敗北数の整合性調整
+            if (log.drops === 0 && drops !== 0) {
+                currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
+            } else if (log.drops !== 0 && drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            log.runAt = runAt;
+            log.drops = drops;
+            updateDisplay();
+        };
+
+        // 【機能2】履歴の削除処理（グローバル露出）
+        window.deleteLog = function(index) {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab || !currentTab.logs[index]) return;
+
+            if (!confirm("この回の履歴ログを完全に削除しますか？\n（総周回数や敗北カウンターの数値も自動的に減算調整されます）")) return;
+
+            const log = currentTab.logs[index];
+
+            // 整合性調整
+            currentTab.totalRuns = Math.max(0, currentTab.totalRuns - log.runAt);
+            if (log.drops === 0) {
+                currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
+            }
+
+            currentTab.logs.splice(index, 1);
+            updateDisplay();
+        };
+
+        // 【機能3】総周回数の「変更」
+        btnEditTotal.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const currentTotalDisplay = currentTab.totalRuns + currentTab.count;
+            const input = prompt("現在の全体の総周回回数を新しい値に直接変更（上書き）します:", currentTotalDisplay);
+            if (input === null) return;
+
+            const newTotal = parseInt(input);
+            if (isNaN(newTotal) || newTotal < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            // 表示される合計値が newTotal になるようにベースとなる totalRuns を逆算調整
+            currentTab.totalRuns = Math.max(0, newTotal - currentTab.count);
+            updateDisplay();
+        });
+
+        // 【機能3】総周回数の「指定加算」
+        btnAddTotal.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の全体の総周回回数に対して、指定した数値を足し算（加算）します:", "100");
+            if (input === null) return;
+
+            const addAmount = parseInt(input);
+            if (isNaN(addAmount) || addAmount <= 0) {
+                alert("1以上の正の整数を入力してください。");
+                return;
+            }
+
+            currentTab.totalRuns += addAmount;
+            updateDisplay();
+        });
+
+        // 【機能4】現在の周回回数（現在値）の「変更」
+        btnEditCurrent.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の1遭遇に向けて計測中の『現在の周回回数』を変更（上書き）します:", currentTab.count);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.count = newCount;
+            updateDisplay();
+        });
+
+        // 【機能4】現在の周回回数（現在値）の「指定加算」
+        btnAddCurrent.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の1遭遇に向けて計測中の『現在の周回回数』に対して、指定した数値を足し算（加算）します:", "10");
+            if (input === null) return;
+
+            const addAmount = parseInt(input);
+            if (isNaN(addAmount) || addAmount <= 0) {
+                alert("1以上の正の整数を入力してください。");
+                return;
+            }
+
+            currentTab.count += addAmount;
+            updateDisplay();
+        });
+
+        // ─── ⚙️ コアリモコンイベントハンドラ ───
 
         setInterval(drawCanvas, 66);
         (function drawLoop() {
