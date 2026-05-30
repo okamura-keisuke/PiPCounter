@@ -15,6 +15,13 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media (max-width: 430px) {
+            .tap-label { font-size: 12px; }
+            .tap-value { font-size: 18px; }
+            .tap-mini { font-size: 12px; padding: 4px 6px; }
+            .tap-action { font-size: 14px; padding: 12px 10px; }
+            .tap-counter { font-size: 4.5rem; }
+        }
     </style>
 </head>
 
@@ -33,55 +40,67 @@
 
         <div id="tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1"></div>
 
-        <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+        <div class="grid grid-cols-2 gap-2 mb-4 text-center">
             <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-500 font-bold">総周回数</p>
-                    <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300">0</p>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">総周回数</p>
+                    <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300 tap-value">0</p>
                 </div>
                 <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
-                    <button id="btn-edit-total" class="text-[9px] bg-slate-800 hover:bg-slate-700 px-1 py-0.5 rounded text-slate-400 font-bold transition-all">変更</button>
-                    <button id="btn-add-total" class="text-[9px] bg-slate-800 hover:bg-slate-700 px-1 py-0.5 rounded text-slate-400 font-bold transition-all">＋加算</button>
+                    <button id="btn-edit-total" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">変更</button>
+                    <button id="btn-add-total" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">＋加算</button>
                 </div>
             </div>
             <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-500 font-bold">遭遇数 / 敗北数</p>
-                    <p class="text-base font-mono font-bold text-amber-400"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">遭遇数 / 敗北数</p>
+                    <p class="text-base font-mono font-bold text-amber-400 tap-value"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
                 </div>
-                <div></div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-encounters" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">遭遇変更</button>
+                    <button id="btn-edit-defeats" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">敗北変更</button>
+                </div>
             </div>
             <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-500 font-bold">推定遭遇確率</p>
-                    <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400">0.00%</p>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">総ドロップ数</p>
+                    <p id="stat-total-drops" class="text-base font-mono font-bold text-emerald-300 tap-value">0</p>
+                </div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-total-drops" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">変更</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">推定遭遇確率</p>
+                    <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400 tap-value">0.00%</p>
                 </div>
                 <div></div>
             </div>
         </div>
 
         <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800 shadow-inner relative overflow-hidden text-center">
-            <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter">0</span>
+            <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter tap-counter">0</span>
             <div class="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-widest">Current Run Count</div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 mb-3">
-            <button id="btn-edit-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-1.5 rounded-xl border border-slate-800 text-[10px] font-bold transition-all">⏱ 現在値の数値を変更</button>
-            <button id="btn-add-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-1.5 rounded-xl border border-slate-800 text-[10px] font-bold transition-all">⏱ 現在値に指定加算</button>
+            <button id="btn-edit-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-2 rounded-xl border border-slate-800 text-[12px] font-bold transition-all tap-action">⏱ 現在値の数値を変更</button>
+            <button id="btn-add-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-2 rounded-xl border border-slate-800 text-[12px] font-bold transition-all tap-action">⏱ 現在値に指定加算</button>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-4">
-            <button id="btn-minus" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold py-4 rounded-xl border border-slate-700/60 transition-all flex items-center justify-center">－</button>
-            <button id="btn-plus" class="bg-gradient-to-b from-emerald-500 to-emerald-600 text-white active:scale-95 text-2xl font-bold py-4 rounded-xl shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center">＋</button>
+            <button id="btn-minus" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold py-4 min-h-[44px] rounded-xl border border-slate-700/60 transition-all flex items-center justify-center">－</button>
+            <button id="btn-plus" class="bg-gradient-to-b from-emerald-500 to-emerald-600 text-white active:scale-95 text-2xl font-bold py-4 min-h-[44px] rounded-xl shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center">＋</button>
         </div>
 
         <div class="grid grid-cols-3 gap-2 mb-4">
-            <button id="btn-reset" class="bg-slate-950 text-slate-400 font-medium py-2.5 rounded-xl border border-slate-800 text-xs transition-all">リセット</button>
-            <button id="btn-encounter" class="bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-950/20">💥 遭遇記録</button>
-            <button id="btn-delete-tab" class="bg-rose-950/40 text-rose-400 font-medium py-2.5 rounded-xl border border-rose-900/30 text-xs transition-all">タブ削除</button>
+            <button id="btn-reset" class="bg-slate-950 text-slate-400 font-medium py-3 min-h-[44px] rounded-xl border border-slate-800 text-[12px] transition-all">リセット</button>
+            <button id="btn-encounter" class="bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 font-black py-3 min-h-[44px] rounded-xl text-[12px] transition-all shadow-lg shadow-amber-950/20">💥 遭遇記録</button>
+            <button id="btn-delete-tab" class="bg-rose-950/40 text-rose-400 font-medium py-3 min-h-[44px] rounded-xl border border-rose-900/30 text-[12px] transition-all">タブ削除</button>
         </div>
 
-        <button id="btn-pip" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 font-bold py-3.5 rounded-xl shadow-xl transition-all text-sm tracking-wider">
+        <button id="btn-pip" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 font-bold py-4 min-h-[48px] rounded-xl shadow-xl transition-all text-base tracking-wider">
             浮遊（PiP）モードを起動
         </button>
 
@@ -102,7 +121,7 @@
         let appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || {
             activeTabId: "tab_1",
             tabs: {
-                "tab_1": { id: "tab_1", name: "カウンター 1", count: 0, totalRuns: 0, defeatCount: 0, logs: [] }
+                "tab_1": { id: "tab_1", name: "カウンター 1", count: 0, totalRuns: 0, totalDrops: 0, encounterCount: 0, defeatCount: 0, logs: [] }
             }
         };
 
@@ -120,11 +139,15 @@
         const statTotalRuns = document.getElementById('stat-total-runs');
         const statEncounters = document.getElementById('stat-encounters');
         const statDefeats = document.getElementById('stat-defeats');
+        const statTotalDrops = document.getElementById('stat-total-drops');
         const statProbability = document.getElementById('stat-probability');
 
         // 新設ボタンの参照
         const btnEditTotal = document.getElementById('btn-edit-total');
         const btnAddTotal = document.getElementById('btn-add-total');
+        const btnEditTotalDrops = document.getElementById('btn-edit-total-drops');
+        const btnEditEncounters = document.getElementById('btn-edit-encounters');
+        const btnEditDefeats = document.getElementById('btn-edit-defeats');
         const btnEditCurrent = document.getElementById('btn-edit-current');
         const btnAddCurrent = document.getElementById('btn-add-current');
         const btnManualLog = document.getElementById('btn-manual-log');
@@ -143,6 +166,29 @@
         let lastPlayHandledAt = 0;
         let mediaSessionReady = false;
         let pipAssumedActive = false;
+
+        function normalizeTab(tab) {
+            if (!tab || typeof tab !== 'object') return;
+            if (!Array.isArray(tab.logs)) tab.logs = [];
+            if (typeof tab.count !== 'number') tab.count = 0;
+            if (typeof tab.totalRuns !== 'number') tab.totalRuns = 0;
+
+            if (typeof tab.defeatCount !== 'number') {
+                tab.defeatCount = tab.logs.filter(log => Number(log?.drops) === 0).length;
+            }
+            if (typeof tab.encounterCount !== 'number') {
+                tab.encounterCount = tab.logs.length;
+            }
+            if (typeof tab.totalDrops !== 'number') {
+                tab.totalDrops = tab.logs.reduce((sum, log) => sum + (Number(log?.drops) || 0), 0);
+            }
+        }
+
+        function normalizeAppState() {
+            if (!appState || typeof appState !== 'object') return;
+            const tabs = appState.tabs || {};
+            Object.values(tabs).forEach(tab => normalizeTab(tab));
+        }
 
         function suppressPlay(ms = PLAY_GUARD_MS) {
             const until = Date.now() + ms;
@@ -244,13 +290,19 @@
             if (!currentTab) return;
 
             const totalRuns = currentTab.totalRuns + currentTab.count; 
-            const encounterCount = currentTab.logs.length;
+            const encounterCount = typeof currentTab.encounterCount === 'number'
+                ? currentTab.encounterCount
+                : currentTab.logs.length;
             const defeatCount = currentTab.defeatCount || 0;
+            const totalDrops = typeof currentTab.totalDrops === 'number'
+                ? currentTab.totalDrops
+                : currentTab.logs.reduce((sum, log) => sum + (Number(log?.drops) || 0), 0);
             const probability = totalRuns > 0 ? ((encounterCount / totalRuns) * 100).toFixed(2) : '0.00';
 
             statTotalRuns.textContent = totalRuns;
             statEncounters.textContent = encounterCount;
             statDefeats.textContent = defeatCount;
+            statTotalDrops.textContent = totalDrops;
             statProbability.textContent = `${probability}%`;
 
             logsContainer.innerHTML = '';
@@ -305,6 +357,8 @@
                 name: `カウンター ${tabCount}`,
                 count: 0,
                 totalRuns: 0,
+                totalDrops: 0,
+                encounterCount: 0,
                 defeatCount: 0,
                 logs: []
             };
@@ -339,6 +393,8 @@
             }
 
             currentTab.totalRuns += currentTab.count;
+            currentTab.encounterCount = (currentTab.encounterCount || 0) + 1;
+            currentTab.totalDrops = (currentTab.totalDrops || 0) + drops;
 
             if (drops === 0) {
                 currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
@@ -378,6 +434,8 @@
 
             // 整合性を保つため総周回ベースに加算
             currentTab.totalRuns += runAt;
+            currentTab.encounterCount = (currentTab.encounterCount || 0) + 1;
+            currentTab.totalDrops = (currentTab.totalDrops || 0) + drops;
             if (drops === 0) {
                 currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
             }
@@ -412,6 +470,9 @@
             // 総周回数の差分を安全に調整
             currentTab.totalRuns = currentTab.totalRuns - log.runAt + runAt;
 
+            // 総ドロップ数の差分を安全に調整
+            currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0) + drops);
+
             // 敗北数の整合性調整
             if (log.drops === 0 && drops !== 0) {
                 currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
@@ -435,6 +496,8 @@
 
             // 整合性調整
             currentTab.totalRuns = Math.max(0, currentTab.totalRuns - log.runAt);
+            currentTab.encounterCount = Math.max(0, (currentTab.encounterCount || 0) - 1);
+            currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0));
             if (log.drops === 0) {
                 currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
             }
@@ -478,6 +541,60 @@
             }
 
             currentTab.totalRuns += addAmount;
+            updateDisplay();
+        });
+
+        // 【新機能】総ドロップ数の「変更」
+        btnEditTotalDrops.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("総ドロップ数を新しい値に直接変更（上書き）します:", currentTab.totalDrops || 0);
+            if (input === null) return;
+
+            const newTotalDrops = parseInt(input);
+            if (isNaN(newTotalDrops) || newTotalDrops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.totalDrops = newTotalDrops;
+            updateDisplay();
+        });
+
+        // 【新機能】総遭遇数の「変更」
+        btnEditEncounters.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("総遭遇数を新しい値に直接変更（上書き）します:", currentTab.encounterCount || 0);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.encounterCount = newCount;
+            updateDisplay();
+        });
+
+        // 【新機能】敗北数の「変更」
+        btnEditDefeats.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("敗北数を新しい値に直接変更（上書き）します:", currentTab.defeatCount || 0);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.defeatCount = newCount;
             updateDisplay();
         });
 
@@ -613,6 +730,7 @@
             if (document.visibilityState === 'visible') {
                 suppressPlay();
                 appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || appState;
+                normalizeAppState();
                 updateDisplay();
             }
         });
@@ -634,6 +752,7 @@
         });
         btnPip.addEventListener('click', startPiP);
 
+        normalizeAppState();
         updateDisplay();
     </script>
 </body>
