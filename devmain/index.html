@@ -114,10 +114,12 @@
 
         const PLAY_GUARD_MS = 800;
         const PLAY_DEDUP_MS = 250;
+        const PIP_STARTUP_PAUSE_DELAY_MS = 50;
         let ignorePlayUntil = 0;
         let lastPlayHandledAt = 0;
         let mediaSessionReady = false;
         let pipAssumedActive = false;
+        let startupPauseTimer = null;
 
         function suppressPlay(ms = PLAY_GUARD_MS) {
             const until = Date.now() + ms;
@@ -130,6 +132,13 @@
                 return video.webkitPresentationMode === 'picture-in-picture';
             }
             return pipAssumedActive;
+        }
+
+        function clearStartupPauseTimer() {
+            if (startupPauseTimer !== null) {
+                clearTimeout(startupPauseTimer);
+                startupPauseTimer = null;
+            }
         }
 
         function shouldCountPlay() {
@@ -357,6 +366,7 @@
 
         function startPiP() {
             suppressPlay();
+            clearStartupPauseTimer();
             video.play().then(() => {
                 prepareMediaSession();
                 if (typeof video.webkitSetPresentationMode === 'function') {
@@ -366,9 +376,10 @@
                 } else if (video.requestPictureInPicture) {
                     video.requestPictureInPicture().then(() => {
                         pipAssumedActive = true;
-                        setTimeout(() => {
-                            if (!video.paused) video.pause();
-                        }, 50);
+                        startupPauseTimer = setTimeout(() => {
+                            if (isInPipMode() && !video.paused) video.pause();
+                            startupPauseTimer = null;
+                        }, PIP_STARTUP_PAUSE_DELAY_MS);
                     }).catch(err => console.log(err));
                 } else {
                     video.pause();
@@ -378,7 +389,9 @@
 
         function handlePlayTrigger() {
             const now = Date.now();
-            if (now < ignorePlayUntil) return;
+            const isSuppressedPlayEvent = now < ignorePlayUntil;
+            // suppressPlay()で抑制中のplayイベントはカウントしない
+            if (isSuppressedPlayEvent) return;
             if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
                 if (!video.paused) video.pause();
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
@@ -408,12 +421,14 @@
         video.addEventListener('play', () => { handlePlayTrigger(); });
 
         video.addEventListener('leavepictureinpicture', () => {
+            clearStartupPauseTimer();
             pipAssumedActive = false;
             updateDisplay();
         });
         if (typeof video.webkitSetPresentationMode === 'function') {
             video.addEventListener('webkitpresentationmodechanged', () => {
                 if (video.webkitPresentationMode === 'inline') {
+                    clearStartupPauseTimer();
                     pipAssumedActive = false;
                     updateDisplay();
                 } else if (video.webkitPresentationMode === 'picture-in-picture') {
