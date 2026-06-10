@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - devMain
+      - devmain
   workflow_dispatch:
 
 permissions:
