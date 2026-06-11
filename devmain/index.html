@@ -681,7 +681,7 @@
 
         // ─── ⚙️ コアリモコンイベントハンドラ ───
 
-        // PiP中のみ描画するrAFループ（setIntervalは廃止）
+        // PiP中のみ描画するrAFループ
         let _rafPending = false;
         (function drawLoop() {
             requestAnimationFrame(() => {
@@ -689,6 +689,12 @@
                 drawLoop();
             });
         })();
+
+        // rAF が抑制された環境向けのバックアップ描画
+        // 即時描画は updateDisplay() 側で維持し、ここは保険として少し低頻度にする
+        setInterval(() => {
+            if (isInPipMode()) drawCanvas();
+        }, 100);
 
         // 手動更新時（状態変化時）に即時1フレーム描画するユーティリティ
         function scheduleCanvasDraw() {
