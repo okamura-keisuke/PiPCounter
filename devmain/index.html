@@ -79,6 +79,23 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-2 gap-2 mb-4 text-center">
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between col-span-2">
+                <p class="text-[11px] text-slate-500 font-bold tap-label">遭遇時の周回数 最小 / 最大</p>
+                <div class="flex items-center justify-center gap-3 mt-1">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider">最小</span>
+                        <span id="stat-min-encounter-run" class="text-base font-mono font-bold text-cyan-300 tap-value">-</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800/80"></div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider">最大</span>
+                        <span id="stat-max-encounter-run" class="text-base font-mono font-bold text-fuchsia-300 tap-value">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800 shadow-inner relative overflow-hidden text-center">
             <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter tap-counter">0</span>
             <div class="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-widest">Current Run Count</div>
@@ -151,6 +168,8 @@
         const statDefeats = document.getElementById('stat-defeats');
         const statTotalDrops = document.getElementById('stat-total-drops');
         const statProbability = document.getElementById('stat-probability');
+        const statMinEncounterRun = document.getElementById('stat-min-encounter-run');
+        const statMaxEncounterRun = document.getElementById('stat-max-encounter-run');
 
         // 新設ボタンの参照
         const btnEditTotal = document.getElementById('btn-edit-total');
@@ -341,12 +360,19 @@
                 ? currentTab.totalDrops
                 : currentTab.logs.reduce((sum, log) => sum + (Number(log?.drops) || 0), 0);
             const probability = totalRuns > 0 ? ((encounterCount / totalRuns) * 100).toFixed(2) : '0.00';
+            const encounterRuns = currentTab.logs
+                .map(log => Number(log?.runAt))
+                .filter(runAt => Number.isFinite(runAt));
+            const minEncounterRun = encounterRuns.length > 0 ? Math.min(...encounterRuns) : null;
+            const maxEncounterRun = encounterRuns.length > 0 ? Math.max(...encounterRuns) : null;
 
             statTotalRuns.textContent = totalRuns;
             statEncounters.textContent = encounterCount;
             statDefeats.textContent = defeatCount;
             statTotalDrops.textContent = totalDrops;
             statProbability.textContent = `${probability}%`;
+            statMinEncounterRun.textContent = minEncounterRun === null ? '-' : String(minEncounterRun);
+            statMaxEncounterRun.textContent = maxEncounterRun === null ? '-' : String(maxEncounterRun);
 
             logsContainer.innerHTML = '';
             if (currentTab.logs.length === 0) {
@@ -730,18 +756,29 @@
         document.addEventListener('touchstart', prepareMediaSession, { passive: true });
         document.addEventListener('click', prepareMediaSession, { passive: true });
 
-        function startPiP() {
+        function primePiPFrame() {
+            drawCanvas();
+            flushCanvasFrame();
+        }
+
+        async function startPiP() {
             suppressPlay();
-            video.play().then(() => {
+            primePiPFrame();
+            try {
+                await video.play();
                 video.pause();
                 prepareMediaSession();
                 if (typeof video.webkitSetPresentationMode === 'function') {
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
                 } else if (video.requestPictureInPicture) {
-                    video.requestPictureInPicture().then(() => { pipAssumedActive = true; }).catch(err => console.log(err));
+                    await video.requestPictureInPicture();
+                    pipAssumedActive = true;
                 }
-            }).catch(err => console.log(err));
+                primePiPFrame();
+            } catch (err) {
+                console.log(err);
+            }
         }
 
         function handlePlayTrigger() {
