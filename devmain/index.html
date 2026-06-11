@@ -720,7 +720,7 @@
         // 即時描画は updateDisplay() 側で維持し、ここは保険として少し低頻度にする
         setInterval(() => {
             if (isInPipMode()) drawCanvas();
-        }, 100);
+        }, 66);
 
         // 手動更新時（状態変化時）に即時1フレーム描画するユーティリティ
         function scheduleCanvasDraw() {
