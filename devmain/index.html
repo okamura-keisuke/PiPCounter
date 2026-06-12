@@ -135,22 +135,12 @@
     <video id="pip-video" playsinline muted class="absolute pointer-events-none" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
 
     <script>
-        const _DEFAULT_STATE = () => ({
+        let appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || {
             activeTabId: "tab_1",
             tabs: {
                 "tab_1": { id: "tab_1", name: "カウンター 1", count: 0, totalRuns: 0, totalDrops: 0, encounterCount: 0, defeatCount: 0, logs: [] }
             }
-        });
-
-        let appState;
-        try {
-            const raw = localStorage.getItem('pip_multicounter_state');
-            appState = raw ? JSON.parse(raw) : _DEFAULT_STATE();
-            if (!appState || typeof appState.tabs !== 'object') throw new Error('invalid');
-        } catch (e) {
-            console.warn('State load failed, resetting:', e);
-            appState = _DEFAULT_STATE();
-        }
+        };
 
         const display = document.getElementById('counter-display');
         const btnPlus = document.getElementById('btn-plus');
@@ -285,26 +275,8 @@
             flushCanvasFrame();
         }
 
-        let _saveTimer = null;
         function saveState() {
-            if (_saveTimer) clearTimeout(_saveTimer);
-            _saveTimer = setTimeout(() => {
-                try {
-                    localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
-                } catch (e) {
-                    console.warn('localStorage write failed:', e);
-                }
-            }, 300);
-        }
-
-        // 即時保存が必要な場面（タブ削除・遭遇記録など）用
-        function saveStateNow() {
-            if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
-            try {
-                localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
-            } catch (e) {
-                console.warn('localStorage write failed:', e);
-            }
+            localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
         }
 
         function renderTabs() {
@@ -392,8 +364,8 @@
                             <span class="font-mono text-[11px] ${isDefeat ? 'text-rose-400 font-bold' : 'text-amber-400'}">${isDefeat ? '❌ 敗北' : '💎 ドロップ: ' + log.drops}</span>
                         </div>
                         <div class="flex gap-1 flex-shrink-0 ml-2">
-                            <button data-log-action="edit" data-log-index="${logIndex}" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition-all">編集</button>
-                            <button data-log-action="delete" data-log-index="${logIndex}" class="bg-rose-950/60 hover:bg-rose-900/60 text-rose-400 px-2 py-1 rounded text-[10px] font-bold transition-all">削除</button>
+                            <button onclick="editLog(${logIndex})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition-all">編集</button>
+                            <button onclick="deleteLog(${logIndex})" class="bg-rose-950/60 hover:bg-rose-900/60 text-rose-400 px-2 py-1 rounded text-[10px] font-bold transition-all">削除</button>
                         </div>
                     `;
                     logsContainer.appendChild(div);
@@ -409,7 +381,7 @@
             renderTabs();
             renderStatsAndLogs();
             saveState();
-            scheduleCanvasDraw();
+            drawCanvas();
         }
 
         function switchTab(id) {
@@ -420,13 +392,10 @@
 
         btnAddTab.addEventListener('click', () => {
             const newId = `tab_${Date.now()}`;
-            // 既存タブの「カウンター N」から最大Nを取得して重複を防ぐ
-            const usedNumbers = Object.values(appState.tabs)
-                .map(t => { const m = t.name.match(/^カウンター\s+(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
-            const nextNum = (usedNumbers.length ? Math.max(...usedNumbers) : 0) + 1;
+            const tabCount = Object.keys(appState.tabs).length + 1;
             appState.tabs[newId] = {
                 id: newId,
-                name: `カウンター ${nextNum}`,
+                name: `カウンター ${tabCount}`,
                 count: 0,
                 totalRuns: 0,
                 totalDrops: 0,
@@ -447,7 +416,6 @@
             if (confirm("このカウンターの全データが削除されます。本当によろしいですか？")) {
                 delete appState.tabs[appState.activeTabId];
                 appState.activeTabId = Object.keys(appState.tabs)[0];
-                saveStateNow();
                 updateDisplay();
             }
         });
@@ -479,9 +447,10 @@
             });
 
             currentTab.count = 0;
-            saveStateNow();
             updateDisplay();
         });
+
+        // ─── 🌟【新設機能のJavaScript実装セクション】 ───
 
         // 【機能1】履歴の手動追加処理
         btnManualLog.addEventListener('click', () => {
@@ -516,8 +485,8 @@
             updateDisplay();
         });
 
-        // 履歴の編集・削除（グローバル汚染なし）
-        function editLog(index) {
+        // 【機能2】履歴の編集処理（グローバル露出）
+        window.editLog = function(index) {
             const currentTab = appState.tabs[appState.activeTabId];
             if (!currentTab || !currentTab.logs[index]) return;
 
@@ -526,16 +495,26 @@
             const runInput = prompt("この回の『かかった周回回数』を変更します:", log.runAt);
             if (runInput === null) return;
             const runAt = parseInt(runInput);
-            if (isNaN(runAt) || runAt < 0) { alert("正しく数値を入力してください。"); return; }
+            if (isNaN(runAt) || runAt < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
 
             const dropInput = prompt("この回の『ドロップ数』を変更します（0で敗北扱い）:", log.drops);
             if (dropInput === null) return;
             const drops = parseInt(dropInput);
-            if (isNaN(drops) || drops < 0) { alert("正しく数値を入力してください。"); return; }
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
 
+            // 総周回数の差分を安全に調整
             currentTab.totalRuns = currentTab.totalRuns - log.runAt + runAt;
+
+            // 総ドロップ数の差分を安全に調整
             currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0) + drops);
 
+            // 敗北数の整合性調整
             if (log.drops === 0 && drops !== 0) {
                 currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
             } else if (log.drops !== 0 && drops === 0) {
@@ -544,17 +523,19 @@
 
             log.runAt = runAt;
             log.drops = drops;
-            saveStateNow();
             updateDisplay();
-        }
+        };
 
-        function deleteLog(index) {
+        // 【機能2】履歴の削除処理（グローバル露出）
+        window.deleteLog = function(index) {
             const currentTab = appState.tabs[appState.activeTabId];
             if (!currentTab || !currentTab.logs[index]) return;
 
             if (!confirm("この回の履歴ログを完全に削除しますか？\n（総周回数や敗北カウンターの数値も自動的に減算調整されます）")) return;
 
             const log = currentTab.logs[index];
+
+            // 整合性調整
             currentTab.totalRuns = Math.max(0, currentTab.totalRuns - log.runAt);
             currentTab.encounterCount = Math.max(0, (currentTab.encounterCount || 0) - 1);
             currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0));
@@ -563,19 +544,8 @@
             }
 
             currentTab.logs.splice(index, 1);
-            saveStateNow();
             updateDisplay();
-        }
-
-        // イベント委任でlogsContainer内のボタンをまとめて処理
-        logsContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-log-action]');
-            if (!btn) return;
-            const index = parseInt(btn.dataset.logIndex, 10);
-            if (isNaN(index)) return;
-            if (btn.dataset.logAction === 'edit') editLog(index);
-            if (btn.dataset.logAction === 'delete') deleteLog(index);
-        });
+        };
 
         // 【機能3】総周回数の「変更」
         btnEditTotal.addEventListener('click', () => {
@@ -707,31 +677,13 @@
 
         // ─── ⚙️ コアリモコンイベントハンドラ ───
 
-        // PiP中のみ描画するrAFループ
-        let _rafPending = false;
+        setInterval(drawCanvas, 66);
         (function drawLoop() {
             requestAnimationFrame(() => {
                 if (isInPipMode()) drawCanvas();
                 drawLoop();
             });
         })();
-
-        // rAF が抑制された環境向けのバックアップ描画
-        // 即時描画は updateDisplay() 側で維持し、ここは保険として少し低頻度にする
-        setInterval(() => {
-            if (isInPipMode()) drawCanvas();
-        }, 66);
-
-        // 手動更新時（状態変化時）に即時1フレーム描画するユーティリティ
-        function scheduleCanvasDraw() {
-            if (!_rafPending) {
-                _rafPending = true;
-                requestAnimationFrame(() => {
-                    drawCanvas();
-                    _rafPending = false;
-                });
-            }
-        }
 
         function prepareMediaSession() {
             if (!('mediaSession' in navigator)) return;
@@ -756,29 +708,18 @@
         document.addEventListener('touchstart', prepareMediaSession, { passive: true });
         document.addEventListener('click', prepareMediaSession, { passive: true });
 
-        function primePiPFrame() {
-            drawCanvas();
-            flushCanvasFrame();
-        }
-
-        async function startPiP() {
+        function startPiP() {
             suppressPlay();
-            primePiPFrame();
-            try {
-                await video.play();
+            video.play().then(() => {
                 video.pause();
                 prepareMediaSession();
                 if (typeof video.webkitSetPresentationMode === 'function') {
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
                 } else if (video.requestPictureInPicture) {
-                    await video.requestPictureInPicture();
-                    pipAssumedActive = true;
+                    video.requestPictureInPicture().then(() => { pipAssumedActive = true; }).catch(err => console.log(err));
                 }
-                primePiPFrame();
-            } catch (err) {
-                console.log(err);
-            }
+            }).catch(err => console.log(err));
         }
 
         function handlePlayTrigger() {
@@ -829,12 +770,7 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 suppressPlay();
-                try {
-                    const raw = localStorage.getItem('pip_multicounter_state');
-                    if (raw) appState = JSON.parse(raw);
-                } catch (e) {
-                    console.warn('State reload failed:', e);
-                }
+                appState = JSON.parse(localStorage.getItem('pip_multicounter_state')) || appState;
                 normalizeAppState();
                 updateDisplay();
             }
@@ -861,5 +797,5 @@
         updateDisplay();
     </script>
 </body>
-<!--END -->
+
 </html>
