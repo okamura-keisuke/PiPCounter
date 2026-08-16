@@ -85,4 +85,4 @@ Avoid introducing:
 
 unless explicitly requested by the user.
 
-Maintain compatibility with Safari on iPhone as a primary target.
+Maintain compatibility with Chrome on iPhone as a primary target.
