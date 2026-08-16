@@ -213,12 +213,14 @@
 
         const PLAY_GUARD_MS = 800;
         const PLAY_DEDUP_MS = 250;
+        const PIP_STARTUP_PLAY_MS = 800;
         let ignorePlayUntil = 0;
         let lastPlayHandledAt = 0;
         let mediaSessionReady = false;
         let pipAssumedActive = false;
         let pipTimerId = null;
         let pipStarting = false;
+        let pipPauseTimerId = null;
 
         // 💡【新設】日本時間のタイムスタンプ文字列(YYYY/MM/DD HH:mm)を生成する共通関数
         function generateTimestamp() {
@@ -348,6 +350,21 @@
             ctx.fillRect(0, 0, 1, 1);
 
             flushCanvasFrame();
+        }
+
+        function primeCanvasFrames() {
+            // 初回PiPでは映像トラックの最初のフレームが遅れることがあるため、
+            // 起動前に複数フレームを生成してPiP側へ渡せる状態にしておく。
+            for (let frame = 0; frame < 4; frame++) drawCanvas();
+        }
+
+        function pauseAfterPipStartup() {
+            if (pipPauseTimerId) clearTimeout(pipPauseTimerId);
+            pipPauseTimerId = setTimeout(() => {
+                pipPauseTimerId = null;
+                if (isInPipMode() && !video.paused) video.pause();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+            }, PIP_STARTUP_PLAY_MS);
         }
 
         function saveState() {
@@ -850,7 +867,7 @@
             if (pipStarting || isInPipMode()) return;
             pipStarting = true;
             suppressPlay();
-            drawCanvas();
+            primeCanvasFrames();
             video.muted = true;
             video.playsInline = true;
             video.play().then(() => {
@@ -859,6 +876,7 @@
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
                     pipStarting = false;
+                    pauseAfterPipStartup();
                     updatePipTimer();
                     updateDisplay(true);
                 } else if (video.requestPictureInPicture) {
@@ -866,11 +884,13 @@
                         .then(() => { 
                             pipAssumedActive = true; 
                             pipStarting = false;
+                            pauseAfterPipStartup();
                             updatePipTimer();
                             updateDisplay(true);
                         })
                         .catch(err => {
                             pipStarting = false;
+                            if (pipPauseTimerId) clearTimeout(pipPauseTimerId);
                             video.pause();
                             console.log(err);
                         });
@@ -880,6 +900,7 @@
                 }
             }).catch(err => {
                 pipStarting = false;
+                if (pipPauseTimerId) clearTimeout(pipPauseTimerId);
                 console.log(err);
             });
         }
@@ -916,6 +937,10 @@
         video.addEventListener('play', () => { handlePlayTrigger(); });
 
         video.addEventListener('leavepictureinpicture', () => {
+            if (pipPauseTimerId) {
+                clearTimeout(pipPauseTimerId);
+                pipPauseTimerId = null;
+            }
             pipAssumedActive = false;
             updatePipTimer();
             updateDisplay(true);
@@ -926,7 +951,7 @@
                     pipAssumedActive = false;
                 } else if (video.webkitPresentationMode === 'picture-in-picture') {
                     pipAssumedActive = true;
-                    video.pause();
+                    pauseAfterPipStartup();
                 }
                 updatePipTimer();
                 updateDisplay(true);
@@ -935,7 +960,7 @@
         video.addEventListener('enterpictureinpicture', () => {
             pipAssumedActive = true;
             pipStarting = false;
-            video.pause();
+            pauseAfterPipStartup();
             updatePipTimer();
             updateDisplay(true);
         });
