@@ -218,6 +218,7 @@
         let mediaSessionReady = false;
         let pipAssumedActive = false;
         let pipTimerId = null;
+        let pipStarting = false;
 
         // 💡【新設】日本時間のタイムスタンプ文字列(YYYY/MM/DD HH:mm)を生成する共通関数
         function generateTimestamp() {
@@ -846,28 +847,45 @@
         document.addEventListener('click', prepareMediaSession, { passive: true });
 
         function startPiP() {
+            if (pipStarting || isInPipMode()) return;
+            pipStarting = true;
             suppressPlay();
+            drawCanvas();
+            video.muted = true;
+            video.playsInline = true;
             video.play().then(() => {
-                video.pause();
                 prepareMediaSession();
                 if (typeof video.webkitSetPresentationMode === 'function') {
                     video.webkitSetPresentationMode('picture-in-picture');
                     pipAssumedActive = true;
+                    pipStarting = false;
                     updatePipTimer();
                     updateDisplay(true);
                 } else if (video.requestPictureInPicture) {
                     video.requestPictureInPicture()
                         .then(() => { 
                             pipAssumedActive = true; 
+                            pipStarting = false;
                             updatePipTimer();
                             updateDisplay(true);
                         })
-                        .catch(err => console.log(err));
+                        .catch(err => {
+                            pipStarting = false;
+                            video.pause();
+                            console.log(err);
+                        });
+                } else {
+                    pipStarting = false;
+                    video.pause();
                 }
-            }).catch(err => console.log(err));
+            }).catch(err => {
+                pipStarting = false;
+                console.log(err);
+            });
         }
 
         function handlePlayTrigger() {
+            if (pipStarting) return;
             const now = Date.now();
             if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
                 if (!video.paused) video.pause();
@@ -908,6 +926,7 @@
                     pipAssumedActive = false;
                 } else if (video.webkitPresentationMode === 'picture-in-picture') {
                     pipAssumedActive = true;
+                    video.pause();
                 }
                 updatePipTimer();
                 updateDisplay(true);
@@ -915,6 +934,8 @@
         }
         video.addEventListener('enterpictureinpicture', () => {
             pipAssumedActive = true;
+            pipStarting = false;
+            video.pause();
             updatePipTimer();
             updateDisplay(true);
         });
