@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Multi-Tab PiP Counter System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media (max-width: 430px) {
+            .tap-label { font-size: 12px; }
+            .tap-value { font-size: 18px; }
+            .tap-mini { font-size: 12px; padding: 4px 6px; }
+            .tap-action { font-size: 14px; padding: 12px 10px; }
+            .tap-counter { font-size: 4.5rem; }
+        }
+    </style>
+</head>
+
+<body class="text-white flex flex-col items-center justify-start min-h-screen p-4 overflow-y-auto pb-12">
+
+    <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl rounded-3xl p-5 shadow-2xl border border-slate-800 relative my-auto">
+        
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-xs font-black tracking-[0.2em] text-slate-400 uppercase">PiP MULTI-COUNTER</h1>
+            <button id="btn-add-tab" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-xl text-xs font-bold transition-all">
+                ＋ タブ追加
+            </button>
+        </div>
+
+        <p class="text-[10px] text-slate-500 text-left mb-3">※タブをタップすると切り替え、既存のタブをもう一度タップすると名前を変更できます。</p>
+
+        <div id="tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1"></div>
+
+        <div class="grid grid-cols-2 gap-2 mb-4 text-center">
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">総周回数</p>
+                    <p id="stat-total-runs" class="text-base font-mono font-bold text-slate-300 tap-value">0</p>
+                </div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-total" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">変更</button>
+                    <button id="btn-add-total" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">＋加算</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">遭遇数 / 敗北数</p>
+                    <p class="text-base font-mono font-bold text-amber-400 tap-value"><span id="stat-encounters">0</span> <span class="text-xs text-slate-600">/</span> <span id="stat-defeats" class="text-rose-400">0</span></p>
+                </div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-encounters" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">遭遇変更</button>
+                    <button id="btn-edit-defeats" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">敗北変更</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">総ドロップ数</p>
+                    <p id="stat-total-drops" class="text-base font-mono font-bold text-emerald-300 tap-value">0</p>
+                </div>
+                <div class="flex justify-center gap-1 mt-1.5 border-t border-slate-800/40 pt-1">
+                    <button id="btn-edit-total-drops" class="text-[11px] bg-slate-800 hover:bg-slate-700 px-1.5 py-1 rounded text-slate-400 font-bold transition-all tap-mini">変更</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] text-slate-500 font-bold tap-label">推定遭遇確率</p>
+                    <p id="stat-probability" class="text-base font-mono font-bold text-indigo-400 tap-value">0.00%</p>
+                </div>
+                <div></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-4 text-center">
+            <div class="bg-slate-950/40 p-2 rounded-xl border border-slate-800/60 flex flex-col justify-between col-span-2">
+                <p class="text-[11px] text-slate-500 font-bold tap-label">遭遇時の周回数 最小 / 最大</p>
+                <div class="flex items-center justify-center gap-3 mt-1">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider">最小</span>
+                        <span id="stat-min-encounter-run" class="text-base font-mono font-bold text-cyan-300 tap-value">-</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800/80"></div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider">最大</span>
+                        <span id="stat-max-encounter-run" class="text-base font-mono font-bold text-fuchsia-300 tap-value">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-950 rounded-2xl py-8 mb-4 border border-slate-800 shadow-inner relative overflow-hidden text-center">
+            <span id="counter-display" class="text-8xl font-mono font-black select-none text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 tracking-tighter tap-counter">0</span>
+            <div class="text-[10px] text-slate-600 font-bold mt-1 uppercase tracking-widest">Current Run Count</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+            <button id="btn-edit-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-2 rounded-xl border border-slate-800 text-[12px] font-bold transition-all tap-action">⏱ 現在値の数値を変更</button>
+            <button id="btn-add-current" class="bg-slate-950/60 text-slate-400 hover:text-slate-300 font-medium py-2 rounded-xl border border-slate-800 text-[12px] font-bold transition-all tap-action">⏱ 現在値に指定加算</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button id="btn-minus" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold py-4 min-h-[44px] rounded-xl border border-slate-700/60 transition-all flex items-center justify-center">－</button>
+            <button id="btn-plus" class="bg-gradient-to-b from-emerald-500 to-emerald-600 text-white active:scale-95 text-2xl font-bold py-4 min-h-[44px] rounded-xl shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center">＋</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <button id="btn-reset" class="bg-slate-950 text-slate-400 font-medium py-3 min-h-[44px] rounded-xl border border-slate-800 text-[12px] transition-all">リセット</button>
+            <button id="btn-encounter" class="bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 font-black py-3 min-h-[44px] rounded-xl text-[12px] transition-all shadow-lg shadow-amber-950/20">💥 遭遇記録</button>
+            <button id="btn-delete-tab" class="bg-rose-950/40 text-rose-400 font-medium py-3 min-h-[44px] rounded-xl border border-rose-900/30 text-[12px] transition-all">タブ削除</button>
+        </div>
+
+        <button id="btn-pip" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 font-bold py-4 min-h-[48px] rounded-xl shadow-xl transition-all text-base tracking-wider">
+            浮遊（PiP）モードを起動
+        </button>
+
+        <canvas id="pip-canvas" class="absolute opacity-0 pointer-events-none" style="width: 1px; height: 1px; top: -10px;"></canvas>
+
+        <div class="mt-5 border-t border-slate-800/80 pt-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-500 tracking-wider uppercase">Encounter Logs (履歴)</h3>
+                <button id="btn-manual-log" class="bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all">＋ 履歴手動追加</button>
+            </div>
+            <div id="logs-container" class="max-h-45 overflow-y-auto space-y-1.5 pr-1 text-xs text-left no-scrollbar"></div>
+        </div>
+    </div>
+
+    <video id="pip-video" playsinline muted class="absolute pointer-events-none" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.01; z-index: -10;"></video>
+
+    <script>
+        const _DEFAULT_STATE = () => ({
+            activeTabId: "tab_1",
+            tabs: {
+                "tab_1": { id: "tab_1", name: "カウンター 1", count: 0, totalRuns: 0, totalDrops: 0, encounterCount: 0, defeatCount: 0, logs: [] }
+            }
+        });
+
+        let appState;
+        try {
+            const raw = localStorage.getItem('pip_multicounter_state');
+            appState = raw ? JSON.parse(raw) : _DEFAULT_STATE();
+            if (!appState || typeof appState.tabs !== 'object') throw new Error('invalid');
+        } catch (e) {
+            console.warn('State load failed, resetting:', e);
+            appState = _DEFAULT_STATE();
+        }
+
+        const display = document.getElementById('counter-display');
+        const btnPlus = document.getElementById('btn-plus');
+        const btnMinus = document.getElementById('btn-minus');
+        const btnReset = document.getElementById('btn-reset');
+        const btnEncounter = document.getElementById('btn-encounter');
+        const btnPip = document.getElementById('btn-pip');
+        const btnAddTab = document.getElementById('btn-add-tab');
+        const btnDeleteTab = document.getElementById('btn-delete-tab');
+        const tabsContainer = document.getElementById('tabs-container');
+        const logsContainer = document.getElementById('logs-container');
+
+        const statTotalRuns = document.getElementById('stat-total-runs');
+        const statEncounters = document.getElementById('stat-encounters');
+        const statDefeats = document.getElementById('stat-defeats');
+        const statTotalDrops = document.getElementById('stat-total-drops');
+        const statProbability = document.getElementById('stat-probability');
+        const statMinEncounterRun = document.getElementById('stat-min-encounter-run');
+        const statMaxEncounterRun = document.getElementById('stat-max-encounter-run');
+
+        // 新設ボタンの参照
+        const btnEditTotal = document.getElementById('btn-edit-total');
+        const btnAddTotal = document.getElementById('btn-add-total');
+        const btnEditTotalDrops = document.getElementById('btn-edit-total-drops');
+        const btnEditEncounters = document.getElementById('btn-edit-encounters');
+        const btnEditDefeats = document.getElementById('btn-edit-defeats');
+        const btnEditCurrent = document.getElementById('btn-edit-current');
+        const btnAddCurrent = document.getElementById('btn-add-current');
+        const btnManualLog = document.getElementById('btn-manual-log');
+
+        const canvas = document.getElementById('pip-canvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_SIZE = 300;
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
+
+        const video = document.getElementById('pip-video');
+
+        const PLAY_GUARD_MS = 800;
+        const PLAY_DEDUP_MS = 250;
+        let ignorePlayUntil = 0;
+        let lastPlayHandledAt = 0;
+        let mediaSessionReady = false;
+        let pipAssumedActive = false;
+
+        function normalizeTab(tab) {
+            if (!tab || typeof tab !== 'object') return;
+            if (!Array.isArray(tab.logs)) tab.logs = [];
+            if (typeof tab.count !== 'number') tab.count = 0;
+            if (typeof tab.totalRuns !== 'number') tab.totalRuns = 0;
+
+            if (typeof tab.defeatCount !== 'number') {
+                tab.defeatCount = tab.logs.filter(log => Number(log?.drops) === 0).length;
+            }
+            if (typeof tab.encounterCount !== 'number') {
+                tab.encounterCount = tab.logs.length;
+            }
+            if (typeof tab.totalDrops !== 'number') {
+                tab.totalDrops = tab.logs.reduce((sum, log) => sum + (Number(log?.drops) || 0), 0);
+            }
+        }
+
+        function normalizeAppState() {
+            if (!appState || typeof appState !== 'object') return;
+            const tabs = appState.tabs || {};
+            Object.values(tabs).forEach(tab => normalizeTab(tab));
+        }
+
+        function suppressPlay(ms = PLAY_GUARD_MS) {
+            const until = Date.now() + ms;
+            if (until > ignorePlayUntil) ignorePlayUntil = until;
+        }
+
+        function isInPipMode() {
+            if (document.pictureInPictureElement === video) return true;
+            if (typeof video.webkitPresentationMode === 'string') {
+                return video.webkitPresentationMode === 'picture-in-picture';
+            }
+            return pipAssumedActive;
+        }
+
+        function shouldCountPlay() {
+            if (!isInPipMode()) return false;
+            if (Date.now() < ignorePlayUntil) return false;
+            return true;
+        }
+
+        const videoStream = canvas.captureStream(15);
+        const canvasVideoTrack = videoStream.getVideoTracks()[0] || null;
+        const combinedStream = new MediaStream();
+        videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
+        video.srcObject = combinedStream;
+
+        let togglePixel = false;
+
+        function flushCanvasFrame() {
+            if (canvasVideoTrack && typeof canvasVideoTrack.requestFrame === 'function') {
+                canvasVideoTrack.requestFrame();
+            }
+        }
+
+        function drawCanvas() {
+            const currentTab = appState.tabs[appState.activeTabId] || { count: 0 };
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            const tabName = (currentTab.name || 'カウンター').trim();
+            const maxLabelWidth = CANVAS_SIZE - 24;
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 22px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            let label = tabName;
+            while (label.length > 0 && ctx.measureText(label).width > maxLabelWidth) {
+                label = label.slice(0, -1);
+            }
+            if (label !== tabName) {
+                label = label.slice(0, Math.max(0, label.length - 1)) + '…';
+            }
+            ctx.fillText(label, CANVAS_SIZE / 2, 18);
+
+            ctx.fillStyle = '#34d399';
+            ctx.font = 'bold 95px font-mono, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(currentTab.count, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 18);
+
+            togglePixel = !togglePixel;
+            ctx.fillStyle = togglePixel ? '#020618' : '#020617';
+            ctx.fillRect(0, 0, 1, 1);
+
+            flushCanvasFrame();
+        }
+
+        let _saveTimer = null;
+        function saveState() {
+            if (_saveTimer) clearTimeout(_saveTimer);
+            _saveTimer = setTimeout(() => {
+                try {
+                    localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
+                } catch (e) {
+                    console.warn('localStorage write failed:', e);
+                }
+            }, 300);
+        }
+
+        // 即時保存が必要な場面（タブ削除・遭遇記録など）用
+        function saveStateNow() {
+            if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+            try {
+                localStorage.setItem('pip_multicounter_state', JSON.stringify(appState));
+            } catch (e) {
+                console.warn('localStorage write failed:', e);
+            }
+        }
+
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            Object.values(appState.tabs).forEach(tab => {
+                const isActive = tab.id === appState.activeTabId;
+                const button = document.createElement('button');
+                button.className = `flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 border ${
+                    isActive 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-md' 
+                    : 'bg-slate-800 text-slate-400 border-slate-700/50 hover:bg-slate-750'
+                }`;
+                button.textContent = `${tab.name} (${tab.count})`;
+                
+                button.addEventListener('click', () => {
+                    if (isActive) {
+                        renameTab(tab.id);
+                    } else {
+                        switchTab(tab.id);
+                    }
+                });
+                tabsContainer.appendChild(button);
+            });
+        }
+
+        function renameTab(id) {
+            const tab = appState.tabs[id];
+            if (!tab) return;
+            
+            const newName = prompt(`「${tab.name}」の新しい名前を入力してください:`, tab.name);
+            if (newName === null) return;
+            
+            const trimmedName = newName.trim();
+            if (trimmedName === "") {
+                alert("名前を空にすることはできません。");
+                return;
+            }
+            
+            tab.name = trimmedName;
+            updateDisplay();
+        }
+
+        function renderStatsAndLogs() {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const totalRuns = currentTab.totalRuns + currentTab.count; 
+            const encounterCount = typeof currentTab.encounterCount === 'number'
+                ? currentTab.encounterCount
+                : currentTab.logs.length;
+            const defeatCount = currentTab.defeatCount || 0;
+            const totalDrops = typeof currentTab.totalDrops === 'number'
+                ? currentTab.totalDrops
+                : currentTab.logs.reduce((sum, log) => sum + (Number(log?.drops) || 0), 0);
+            const probability = totalRuns > 0 ? ((encounterCount / totalRuns) * 100).toFixed(2) : '0.00';
+            const encounterRuns = currentTab.logs
+                .map(log => Number(log?.runAt))
+                .filter(runAt => Number.isFinite(runAt));
+            const minEncounterRun = encounterRuns.length > 0 ? Math.min(...encounterRuns) : null;
+            const maxEncounterRun = encounterRuns.length > 0 ? Math.max(...encounterRuns) : null;
+
+            statTotalRuns.textContent = totalRuns;
+            statEncounters.textContent = encounterCount;
+            statDefeats.textContent = defeatCount;
+            statTotalDrops.textContent = totalDrops;
+            statProbability.textContent = `${probability}%`;
+            statMinEncounterRun.textContent = minEncounterRun === null ? '-' : String(minEncounterRun);
+            statMaxEncounterRun.textContent = maxEncounterRun === null ? '-' : String(maxEncounterRun);
+
+            logsContainer.innerHTML = '';
+            if (currentTab.logs.length === 0) {
+                logsContainer.innerHTML = `<div class="text-slate-600 italic text-center pt-2">履歴がありません</div>`;
+            } else {
+                [...currentTab.logs].reverse().forEach((log, index) => {
+                    const realIndex = currentTab.logs.length - index;
+                    const logIndex = currentTab.logs.length - 1 - index; // 実際のデータ内インデックス
+                    const isDefeat = log.drops === 0;
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-2 rounded-lg bg-slate-950/40 border ${isDefeat ? 'border-rose-950/30 bg-rose-950/5 text-rose-300' : 'border-slate-800/80 text-slate-300'}`;
+                    
+                    // 【機能2】履歴アイテムの右側に「編集」「削除」の操作UIを密かに実装
+                    div.innerHTML = `
+                        <div class="flex flex-col flex-grow text-left">
+                            <span><strong>#${realIndex}</strong> 遭遇まで: <strong>${log.runAt}</strong> 回</span>
+                            <span class="font-mono text-[11px] ${isDefeat ? 'text-rose-400 font-bold' : 'text-amber-400'}">${isDefeat ? '❌ 敗北' : '💎 ドロップ: ' + log.drops}</span>
+                        </div>
+                        <div class="flex gap-1 flex-shrink-0 ml-2">
+                            <button data-log-action="edit" data-log-index="${logIndex}" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition-all">編集</button>
+                            <button data-log-action="delete" data-log-index="${logIndex}" class="bg-rose-950/60 hover:bg-rose-900/60 text-rose-400 px-2 py-1 rounded text-[10px] font-bold transition-all">削除</button>
+                        </div>
+                    `;
+                    logsContainer.appendChild(div);
+                });
+            }
+        }
+
+        function updateDisplay() {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) {
+                display.textContent = currentTab.count;
+            }
+            renderTabs();
+            renderStatsAndLogs();
+            saveState();
+            scheduleCanvasDraw();
+        }
+
+        function switchTab(id) {
+            if (!appState.tabs[id]) return;
+            appState.activeTabId = id;
+            updateDisplay();
+        }
+
+        btnAddTab.addEventListener('click', () => {
+            const newId = `tab_${Date.now()}`;
+            // 既存タブの「カウンター N」から最大Nを取得して重複を防ぐ
+            const usedNumbers = Object.values(appState.tabs)
+                .map(t => { const m = t.name.match(/^カウンター\s+(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
+            const nextNum = (usedNumbers.length ? Math.max(...usedNumbers) : 0) + 1;
+            appState.tabs[newId] = {
+                id: newId,
+                name: `カウンター ${nextNum}`,
+                count: 0,
+                totalRuns: 0,
+                totalDrops: 0,
+                encounterCount: 0,
+                defeatCount: 0,
+                logs: []
+            };
+            appState.activeTabId = newId;
+            updateDisplay();
+        });
+
+        btnDeleteTab.addEventListener('click', () => {
+            const tabKeys = Object.keys(appState.tabs);
+            if (tabKeys.length <= 1) {
+                alert("これ以上タブを削除することはできません。");
+                return;
+            }
+            if (confirm("このカウンターの全データが削除されます。本当によろしいですか？")) {
+                delete appState.tabs[appState.activeTabId];
+                appState.activeTabId = Object.keys(appState.tabs)[0];
+                saveStateNow();
+                updateDisplay();
+            }
+        });
+
+        btnEncounter.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt(`遭遇記録を行います。\nドロップ数を入力してください（0を入力すると敗北数に加算されます）:`, "1");
+            if (input === null) return;
+
+            const drops = parseInt(input);
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.totalRuns += currentTab.count;
+            currentTab.encounterCount = (currentTab.encounterCount || 0) + 1;
+            currentTab.totalDrops = (currentTab.totalDrops || 0) + drops;
+
+            if (drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            currentTab.logs.push({
+                runAt: currentTab.count, 
+                drops: drops
+            });
+
+            currentTab.count = 0;
+            saveStateNow();
+            updateDisplay();
+        });
+
+        // 【機能1】履歴の手動追加処理
+        btnManualLog.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const runInput = prompt("過去の遭遇履歴を手動追加します。\nこの遭遇までに『かかった周回回数』を入力してください:", "1");
+            if (runInput === null) return;
+            const runAt = parseInt(runInput);
+            if (isNaN(runAt) || runAt < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            const dropInput = prompt("ドロップ数を入力してください（0を入力すると敗北扱いになります）:", "1");
+            if (dropInput === null) return;
+            const drops = parseInt(dropInput);
+            if (isNaN(drops) || drops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            // 整合性を保つため総周回ベースに加算
+            currentTab.totalRuns += runAt;
+            currentTab.encounterCount = (currentTab.encounterCount || 0) + 1;
+            currentTab.totalDrops = (currentTab.totalDrops || 0) + drops;
+            if (drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            currentTab.logs.push({ runAt: runAt, drops: drops });
+            updateDisplay();
+        });
+
+        // 履歴の編集・削除（グローバル汚染なし）
+        function editLog(index) {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab || !currentTab.logs[index]) return;
+
+            const log = currentTab.logs[index];
+
+            const runInput = prompt("この回の『かかった周回回数』を変更します:", log.runAt);
+            if (runInput === null) return;
+            const runAt = parseInt(runInput);
+            if (isNaN(runAt) || runAt < 0) { alert("正しく数値を入力してください。"); return; }
+
+            const dropInput = prompt("この回の『ドロップ数』を変更します（0で敗北扱い）:", log.drops);
+            if (dropInput === null) return;
+            const drops = parseInt(dropInput);
+            if (isNaN(drops) || drops < 0) { alert("正しく数値を入力してください。"); return; }
+
+            currentTab.totalRuns = currentTab.totalRuns - log.runAt + runAt;
+            currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0) + drops);
+
+            if (log.drops === 0 && drops !== 0) {
+                currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
+            } else if (log.drops !== 0 && drops === 0) {
+                currentTab.defeatCount = (currentTab.defeatCount || 0) + 1;
+            }
+
+            log.runAt = runAt;
+            log.drops = drops;
+            saveStateNow();
+            updateDisplay();
+        }
+
+        function deleteLog(index) {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab || !currentTab.logs[index]) return;
+
+            if (!confirm("この回の履歴ログを完全に削除しますか？\n（総周回数や敗北カウンターの数値も自動的に減算調整されます）")) return;
+
+            const log = currentTab.logs[index];
+            currentTab.totalRuns = Math.max(0, currentTab.totalRuns - log.runAt);
+            currentTab.encounterCount = Math.max(0, (currentTab.encounterCount || 0) - 1);
+            currentTab.totalDrops = Math.max(0, (currentTab.totalDrops || 0) - (Number(log.drops) || 0));
+            if (log.drops === 0) {
+                currentTab.defeatCount = Math.max(0, (currentTab.defeatCount || 0) - 1);
+            }
+
+            currentTab.logs.splice(index, 1);
+            saveStateNow();
+            updateDisplay();
+        }
+
+        // イベント委任でlogsContainer内のボタンをまとめて処理
+        logsContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-log-action]');
+            if (!btn) return;
+            const index = parseInt(btn.dataset.logIndex, 10);
+            if (isNaN(index)) return;
+            if (btn.dataset.logAction === 'edit') editLog(index);
+            if (btn.dataset.logAction === 'delete') deleteLog(index);
+        });
+
+        // 【機能3】総周回数の「変更」
+        btnEditTotal.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const currentTotalDisplay = currentTab.totalRuns + currentTab.count;
+            const input = prompt("現在の全体の総周回回数を新しい値に直接変更（上書き）します:", currentTotalDisplay);
+            if (input === null) return;
+
+            const newTotal = parseInt(input);
+            if (isNaN(newTotal) || newTotal < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            // 表示される合計値が newTotal になるようにベースとなる totalRuns を逆算調整
+            currentTab.totalRuns = Math.max(0, newTotal - currentTab.count);
+            updateDisplay();
+        });
+
+        // 【機能3】総周回数の「指定加算」
+        btnAddTotal.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の全体の総周回回数に対して、指定した数値を足し算（加算）します:", "100");
+            if (input === null) return;
+
+            const addAmount = parseInt(input);
+            if (isNaN(addAmount) || addAmount <= 0) {
+                alert("1以上の正の整数を入力してください。");
+                return;
+            }
+
+            currentTab.totalRuns += addAmount;
+            updateDisplay();
+        });
+
+        // 【新機能】総ドロップ数の「変更」
+        btnEditTotalDrops.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("総ドロップ数を新しい値に直接変更（上書き）します:", currentTab.totalDrops || 0);
+            if (input === null) return;
+
+            const newTotalDrops = parseInt(input);
+            if (isNaN(newTotalDrops) || newTotalDrops < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.totalDrops = newTotalDrops;
+            updateDisplay();
+        });
+
+        // 【新機能】総遭遇数の「変更」
+        btnEditEncounters.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("総遭遇数を新しい値に直接変更（上書き）します:", currentTab.encounterCount || 0);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.encounterCount = newCount;
+            updateDisplay();
+        });
+
+        // 【新機能】敗北数の「変更」
+        btnEditDefeats.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("敗北数を新しい値に直接変更（上書き）します:", currentTab.defeatCount || 0);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.defeatCount = newCount;
+            updateDisplay();
+        });
+
+        // 【機能4】現在の周回回数（現在値）の「変更」
+        btnEditCurrent.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の1遭遇に向けて計測中の『現在の周回回数』を変更（上書き）します:", currentTab.count);
+            if (input === null) return;
+
+            const newCount = parseInt(input);
+            if (isNaN(newCount) || newCount < 0) {
+                alert("正しく数値を入力してください。");
+                return;
+            }
+
+            currentTab.count = newCount;
+            updateDisplay();
+        });
+
+        // 【機能4】現在の周回回数（現在値）の「指定加算」
+        btnAddCurrent.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (!currentTab) return;
+
+            const input = prompt("現在の1遭遇に向けて計測中の『現在の周回回数』に対して、指定した数値を足し算（加算）します:", "10");
+            if (input === null) return;
+
+            const addAmount = parseInt(input);
+            if (isNaN(addAmount) || addAmount <= 0) {
+                alert("1以上の正の整数を入力してください。");
+                return;
+            }
+
+            currentTab.count += addAmount;
+            updateDisplay();
+        });
+
+        // ─── ⚙️ コアリモコンイベントハンドラ ───
+
+        // PiP中のみ描画するrAFループ
+        let _rafPending = false;
+        (function drawLoop() {
+            requestAnimationFrame(() => {
+                if (isInPipMode()) drawCanvas();
+                drawLoop();
+            });
+        })();
+
+        // rAF が抑制された環境向けのバックアップ描画
+        // 即時描画は updateDisplay() 側で維持し、ここは保険として少し低頻度にする
+        setInterval(() => {
+            if (isInPipMode()) drawCanvas();
+        }, 66);
+
+        // 手動更新時（状態変化時）に即時1フレーム描画するユーティリティ
+        function scheduleCanvasDraw() {
+            if (!_rafPending) {
+                _rafPending = true;
+                requestAnimationFrame(() => {
+                    drawCanvas();
+                    _rafPending = false;
+                });
+            }
+        }
+
+        function prepareMediaSession() {
+            if (!('mediaSession' in navigator)) return;
+            if (!mediaSessionReady) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'PiP Counter System',
+                    artist: '▶︎ ボタンタップで [+1]'
+                });
+                if (typeof navigator.mediaSession.setActionHandler === 'function') {
+                    try {
+                        navigator.mediaSession.setActionHandler('play', () => { handlePlayTrigger(); });
+                        navigator.mediaSession.setActionHandler('pause', () => {
+                            if (!video.paused) video.pause();
+                            navigator.mediaSession.playbackState = 'paused';
+                        });
+                    } catch (e) {}
+                }
+                mediaSessionReady = true;
+            }
+            navigator.mediaSession.playbackState = 'paused';
+        }
+        document.addEventListener('touchstart', prepareMediaSession, { passive: true });
+        document.addEventListener('click', prepareMediaSession, { passive: true });
+
+        function primePiPFrame() {
+            drawCanvas();
+            flushCanvasFrame();
+        }
+
+        async function startPiP() {
+            suppressPlay();
+            primePiPFrame();
+            try {
+                await video.play();
+                video.pause();
+                prepareMediaSession();
+                if (typeof video.webkitSetPresentationMode === 'function') {
+                    video.webkitSetPresentationMode('picture-in-picture');
+                    pipAssumedActive = true;
+                } else if (video.requestPictureInPicture) {
+                    await video.requestPictureInPicture();
+                    pipAssumedActive = true;
+                }
+                primePiPFrame();
+            } catch (err) {
+                console.log(err);
+            }
+        }
+
+        function handlePlayTrigger() {
+            const now = Date.now();
+            if (now - lastPlayHandledAt < PLAY_DEDUP_MS) {
+                if (!video.paused) video.pause();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+                return;
+            }
+            lastPlayHandledAt = now;
+
+            if (!shouldCountPlay()) {
+                if (!video.paused) video.pause();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+                return;
+            }
+
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) {
+                currentTab.count++;
+                updateDisplay();
+            }
+
+            suppressPlay(200);
+            setTimeout(() => {
+                video.pause();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+            }, 50);
+        }
+
+        video.addEventListener('play', () => { handlePlayTrigger(); });
+
+        video.addEventListener('leavepictureinpicture', () => {
+            pipAssumedActive = false;
+            updateDisplay();
+        });
+        if (typeof video.webkitSetPresentationMode === 'function') {
+            video.addEventListener('webkitpresentationmodechanged', () => {
+                if (video.webkitPresentationMode === 'inline') {
+                    pipAssumedActive = false;
+                    updateDisplay();
+                } else if (video.webkitPresentationMode === 'picture-in-picture') {
+                    pipAssumedActive = true;
+                }
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                suppressPlay();
+                try {
+                    const raw = localStorage.getItem('pip_multicounter_state');
+                    if (raw) appState = JSON.parse(raw);
+                } catch (e) {
+                    console.warn('State reload failed:', e);
+                }
+                normalizeAppState();
+                updateDisplay();
+            }
+        });
+
+        btnPlus.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab) { currentTab.count++; updateDisplay(); }
+        });
+        btnMinus.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab && currentTab.count > 0) { currentTab.count--; updateDisplay(); }
+        });
+        btnReset.addEventListener('click', () => {
+            const currentTab = appState.tabs[appState.activeTabId];
+            if (currentTab && confirm("現在のカウントを0にリセットしますか？（周回数や履歴は残ります）")) {
+                currentTab.count = 0;
+                updateDisplay();
+            }
+        });
+        btnPip.addEventListener('click', startPiP);
+
+        normalizeAppState();
+        updateDisplay();
+    </script>
+</body>
+<!--END -->
+</html>

@@ -1,0 +1,25 @@
+# PiPCounter/.codex/config.toml
+
+# devmain 以外への書き込み要求は承認画面を出さず失敗させる
+approval_policy = "never"
+
+# このプロジェクト専用の権限プロファイル
+default_permissions = "pipcounter-dev"
+
+[permissions.pipcounter-dev]
+description = "Allow edits only inside devmain."
+extends = ":read-only"
+
+[permissions.pipcounter-dev.filesystem.":workspace_roots"]
+
+# プロジェクト全体は読み取り可能
+"." = "read"
+
+# devmain のみ書き込み可能
+"devmain" = "write"
+"devmain/**" = "write"
+
+[permissions.pipcounter-dev.network]
+
+# git push や外部通信も不要なので無効
+enabled = false
