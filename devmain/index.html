@@ -233,6 +233,17 @@
             return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
         }
 
+        function generateTimestampWithSeconds() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const sec = String(now.getSeconds()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}:${sec}`;
+        }
+
         function cacheTabMetadata(tab) {
             if (!tab) return;
             
@@ -321,6 +332,8 @@
         video.srcObject = combinedStream;
 
         let togglePixel = false;
+        // ＋ボタンによる直近のカウント時刻。表示専用で、localStorageには保存しない。
+        const lastCountTimestamps = new Map();
 
         function flushCanvasFrame() {
             if (canvasVideoTrack && typeof canvasVideoTrack.requestFrame === 'function') {
@@ -343,7 +356,15 @@
             ctx.font = 'bold 95px font-mono, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(currentTab.count, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 18);
+            ctx.fillText(currentTab.count, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 8);
+
+            const lastCountTimestamp = lastCountTimestamps.get(appState.activeTabId);
+            if (lastCountTimestamp) {
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 16px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(lastCountTimestamp, CANVAS_SIZE / 2, CANVAS_SIZE - 18);
+            }
 
             togglePixel = !togglePixel;
             ctx.fillStyle = togglePixel ? '#020618' : '#020617';
@@ -924,6 +945,7 @@
             const currentTab = appState.tabs[appState.activeTabId];
             if (currentTab) {
                 currentTab.count++;
+                lastCountTimestamps.set(appState.activeTabId, generateTimestampWithSeconds());
                 updateDisplay(false);
             }
 
@@ -977,7 +999,11 @@
 
         btnPlus.addEventListener('click', () => {
             const currentTab = appState.tabs[appState.activeTabId];
-            if (currentTab) { currentTab.count++; updateDisplay(false); }
+            if (currentTab) {
+                currentTab.count++;
+                lastCountTimestamps.set(appState.activeTabId, generateTimestampWithSeconds());
+                updateDisplay(false);
+            }
         });
         btnMinus.addEventListener('click', () => {
             const currentTab = appState.tabs[appState.activeTabId];
